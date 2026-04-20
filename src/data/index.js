@@ -11,25 +11,27 @@
 //            Use the next sequential ID (gbnd026, gagr026, gmod021...)
 //            Add a matching `domain` field (boundaries/agreement/modifiers/parallel/usage)
 //
+//   SAT PDF import: Add to grammar/sat_language.js (grammar/conventions/transitions)
+//            or reading/sat_passages.js (reading comprehension).
+//            Use next IDs: slwc021, slec026, sltr017 (language)
+//                          rp3_016 (reading passages)
+//
 //   New domain: Create src/data/grammar/newdomain.js, export GRAMMAR_NEWDOMAIN,
 //               then add one import + one spread below. Zero other changes needed.
 //
-//   PDF import: Paste extracted questions matching the shape of any entry below.
-//               Required fields for vocab: id, word, definition, example, options (array of 4), answer (0-3), tier (1-3), xp
-//               Required fields for grammar: id, sentence, question, options, answer, explanation, tier, xp, domain
-//
 // QUESTION COUNTS (update this comment when you add more):
-//   Vocab legacy (v1-v40):     40 words  ← original seed bank
-//   Vocab T1 (8th grade):      70 words
-//   Vocab T2 (9th-10th grade): 80 words
-//   Vocab T3 (SAT level):      80 words
-//   Grammar legacy (g1-g22):   22 questions ← original seed bank
-//   Grammar - Boundaries:      25 questions
-//   Grammar - Agreement:       25 questions
-//   Grammar - Modifiers:       20 questions
-//   Grammar - Parallel:        20 questions
-//   Grammar - Usage:           25 questions
-//   TOTAL:                     407 questions
+//   Vocab legacy (v1-v40):          40 words
+//   Vocab T1 (8th grade):           70 words
+//   Vocab T2 (9th-10th grade):      80 words
+//   Vocab T3 (SAT level):           80 words
+//   Grammar legacy (g1-g22):        22 questions
+//   Grammar - Boundaries:           25 questions
+//   Grammar - Agreement:            25 questions
+//   Grammar - Modifiers:            20 questions
+//   Grammar - Parallel:             20 questions
+//   Grammar - Usage:                25 questions
+//   SAT Language (Tests 5 & 11):    61 questions  ← NEW
+//   TOTAL:                          468 questions
 // ============================================================
 
 // Legacy seed banks (IDs: v1-v40, g1-g22) — do NOT remove; progress saved by ID
@@ -45,6 +47,7 @@ import { GRAMMAR_AGREEMENT }  from './grammar/agreement';
 import { GRAMMAR_MODIFIERS }  from './grammar/modifiers';
 import { GRAMMAR_PARALLEL }   from './grammar/parallel';
 import { GRAMMAR_USAGE }      from './grammar/usage';
+import { SAT_LANGUAGE }       from './grammar/sat_language';  // Official SAT Tests 5 & 11
 
 // ── Vocab ────────────────────────────────────────────────────
 export const ALL_VOCAB = [
@@ -62,10 +65,11 @@ export const ALL_GRAMMAR = [
   ...GRAMMAR_MODIFIERS,
   ...GRAMMAR_PARALLEL,
   ...GRAMMAR_USAGE,
+  ...SAT_LANGUAGE,       // slwc001-020, slec001-025, sltr001-016 (Official SAT Tests 5 & 11)
 ];
 
 // Backward-compatible named exports (VocabForge + GrammarDojo use these)
-export const VOCAB_WORDS      = ALL_VOCAB;
+export const VOCAB_WORDS        = ALL_VOCAB;
 export const GRAMMAR_CHALLENGES = ALL_GRAMMAR;
 
 // ── Metadata helpers ─────────────────────────────────────────

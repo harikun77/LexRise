@@ -1,0 +1,623 @@
+// ============================================================
+// SAT Language Questions — Official Practice Tests #5 and #11
+// Source: College Board official digital SAT practice materials
+// ============================================================
+// Question types:
+//   slwc — Words in Context        (20 questions, slwc001–020)
+//   slec — Standard English Conventions (25 questions, slec001–025)
+//   sltr — Transitions             (16 questions, sltr001–016)
+//
+// All Tier 3 (SAT level) unless marked Tier 2 (9th–10th grade).
+// Domain matches the five existing grammar domains so GrammarDojo
+// distributes them correctly.
+// ============================================================
+
+export const SAT_LANGUAGE = [
+
+  // ═══════════════════════════════════════════════════════════
+  //  WORDS IN CONTEXT  —  slwc001–020
+  //  "Which choice completes the text with the most logical
+  //   and precise word or phrase?"
+  // ═══════════════════════════════════════════════════════════
+
+  // ── Test 11 · Module 1 ─────────────────────────────────────
+  {
+    id: 'slwc001',
+    sentence: "Ezra Pound's poetry can be hard to ______: it is dense, experimental, and so full of references and allusions that many readers have a difficult time even identifying the poems' subjects.",
+    question: 'Which choice completes the text with the most logical and precise word or phrase?',
+    options: ['Comprehend', 'Dislike', 'Interrupt', 'Overlook'],
+    answer: 0,
+    explanation: '"Comprehend" (to understand fully) is the only logical choice. Every clue in the sentence—dense, experimental, readers struggle to identify subjects—points to difficulty understanding, not disliking, interrupting, or overlooking the poetry.',
+    tier: 3, xp: 20, domain: 'usage',
+  },
+  {
+    id: 'slwc002',
+    sentence: 'The unique subak water management system used to irrigate the rice paddy fields of Bali has a rich cultural significance dating back to the ninth century. The many elements of subak—terraces, canals, and water temples—are ______: they are joined together into a single cohesive unit.',
+    question: 'Which choice completes the text with the most logical and precise word or phrase?',
+    options: ['Outmoded', 'Informal', 'Interconnected', 'Optional'],
+    answer: 2,
+    explanation: '"Interconnected" means linked or joined together—exactly what the second sentence states: "joined together into a single cohesive unit." The colon signals that the second sentence explains the first, so the word must match that explanation precisely.',
+    tier: 3, xp: 20, domain: 'usage',
+  },
+  {
+    id: 'slwc003',
+    sentence: "Although the government of the Soviet Union attempted to ______ Georgi Vladimov's novel Faithful Ruslan, copies of the book circulated in secret among readers in several parts of the country.",
+    question: 'Which choice completes the text with the most logical and precise word or phrase?',
+    options: ['Replicate', 'Critique', 'Import', 'Suppress'],
+    answer: 3,
+    explanation: '"Suppress" (to forcibly put an end to or censor) makes the sentence logical: the government tried to stop the book, yet it still circulated secretly. The word "although" signals a contrast—the government\'s effort failed—which only makes sense if the government tried to block the book.',
+    tier: 3, xp: 20, domain: 'usage',
+  },
+  {
+    id: 'slwc004',
+    sentence: "A casual description of Scherezade García's 2019 mural Blame It on the Bean can make the work seem ______—a painting that depicts three women drinking coffee may not sound particularly ambitious—but in fact the work is a complex, dynamic meditation on gender and the legacy of colonialism.",
+    question: 'Which choice completes the text with the most logical and precise word or phrase?',
+    options: ['Unassuming', 'Shrewd', 'Incongruous', 'Pretentious'],
+    answer: 0,
+    explanation: '"Unassuming" means modest or not impressive-looking on the surface—perfectly fitting a description that makes the mural seem unremarkable. The "but in fact" contrast confirms this: it appears humble but is actually complex and ambitious.',
+    tier: 3, xp: 20, domain: 'usage',
+  },
+  {
+    id: 'slwc005',
+    sentence: 'Scholars long thought that the initial spread of silk beyond China occurred in the second century CE, but this view has been ______ by new archaeological evidence from South Asia that reveals that the people of the Indus Civilization made use of silk at least 1,000 years earlier.',
+    question: 'Which choice completes the text with the most logical and precise word or phrase?',
+    options: ['Investigated', 'Misinterpreted', 'Anticipated', 'Contradicted'],
+    answer: 3,
+    explanation: '"Contradicted" (proved wrong) is the only choice that fits. The new evidence directly opposes the old view by dating silk use 1,000 years earlier. "Investigated" is too neutral; "misinterpreted" would apply to the evidence itself (not to the earlier scholars\' view); "anticipated" means expected beforehand.',
+    tier: 3, xp: 20, domain: 'usage',
+  },
+
+  // ── Test 11 · Module 2 ─────────────────────────────────────
+  {
+    id: 'slwc006',
+    sentence: 'Ancient Inca inhabiting the Andes Mountains used terraces, rows of flattened land with built-in irrigation systems, to grow crops at different altitudes. This method of farming proved to be highly ______, as evidenced by the great number and variety of crops grown at that time.',
+    question: 'Which choice completes the text with the most logical and precise word or phrase?',
+    options: ['Chaotic', 'Uniform', 'Effective', 'Burdensome'],
+    answer: 2,
+    explanation: '"Effective" (producing the desired result) is directly supported by "a great number and variety of crops"—evidence of success. "Chaotic" and "burdensome" contradict the positive evidence; "uniform" (identical) doesn\'t connect to the variety of crops.',
+    tier: 3, xp: 20, domain: 'usage',
+  },
+  {
+    id: 'slwc007',
+    sentence: 'Since the Hubble Space Telescope was launched in 1990, astronauts have needed to complete regular missions to repair it. Researchers hope that robots will soon be able to make these repairs. Employing robots instead of humans will be helpful, as ______ astronauts to maintain the telescope can be expensive.',
+    question: 'Which choice completes the text with the most logical and precise word or phrase?',
+    options: ['Straightening', 'Forgetting about', 'Relying on', 'Reducing'],
+    answer: 2,
+    explanation: '"Relying on" (depending on) logically completes the sentence: depending on astronauts is expensive, which is why robots would be cheaper. The other choices ("straightening," "forgetting about," "reducing" astronauts) do not logically connect to the reason robots are preferable.',
+    tier: 3, xp: 20, domain: 'usage',
+  },
+  {
+    id: 'slwc008',
+    sentence: "There are many famous examples of election pollsters making inaccurate predictions. But neuroscientist and pollster Sam Wang has said that these failures should not lead campaigns to ______ election polling entirely. Polling is about more than predicting the winner; it helps strategists identify where their efforts are most likely to be effective.",
+    question: 'Which choice completes the text with the most logical and precise word or phrase?',
+    options: ['Distort', 'Enact', 'Neglect', 'Supplement'],
+    answer: 2,
+    explanation: '"Neglect" (to fail to give proper attention to; to abandon) is correct. Wang argues campaigns should not ignore polling entirely just because it sometimes fails. "Distort," "enact," and "supplement" do not express the idea of abandoning polling.',
+    tier: 3, xp: 20, domain: 'usage',
+  },
+  {
+    id: 'slwc009',
+    sentence: "From a 1955 translation of Samuel Beckett's novel Molloy: 'Having cleared the ramparts I had to confess the sky was clearing... and the sun, already down, was manifest in the livid tongues of fire darting towards the zenith.' As used in the text, what does the word \"manifest\" most nearly mean?",
+    question: 'As used in this passage, what does "manifest" most nearly mean?',
+    options: ['Realized', 'Perceptible', 'Situated', 'Dwindling'],
+    answer: 1,
+    explanation: '"Perceptible" (able to be seen or noticed) best fits. The sun was below the horizon but still visible through the fire-colored light on the horizon—it was perceptible through its effects. "Realized" (achieved) and "situated" (placed) don\'t fit; "dwindling" (decreasing) contradicts the vivid image of fire "darting towards the zenith."',
+    tier: 3, xp: 20, domain: 'usage',
+  },
+  {
+    id: 'slwc010',
+    sentence: "Steiger Butte Drum, a family ensemble from the Klamath Tribes, collaborated with composer Michael Gordon to create Natural History. Steiger Butte Drum's participation is ______ to the piece: members not only contributed to its composition but also must be included in all performances.",
+    question: 'Which choice completes the text with the most logical and precise word or phrase?',
+    options: ['Tangential', 'Subsequent', 'Analogous', 'Integral'],
+    answer: 3,
+    explanation: '"Integral" (essential, necessary for completeness) is supported by the colon explanation: members must be included in ALL performances. "Tangential" (only peripherally related) is the opposite; "subsequent" (coming after) and "analogous" (similar to) don\'t convey necessity.',
+    tier: 3, xp: 20, domain: 'usage',
+  },
+
+  // ── Test 5 · Module 1 ──────────────────────────────────────
+  {
+    id: 'slwc011',
+    sentence: "From Emily Pauline Johnson's 1913 story: Fox-Foot, a young Ojibwe man guiding fur traders and suspecting they are being followed, 'would allow no fire to be built, no landing to be made, no ______ of their passing to be left.' As used in the text, what does 'trace' most nearly mean?",
+    question: 'As used in this passage, what does "trace" most nearly mean?',
+    options: ['Evidence', 'Blemish', 'Amount', 'Sketch'],
+    answer: 0,
+    explanation: '"Evidence" best captures the meaning of "trace" here. Fox-Foot wants to leave no sign of their presence—no evidence they passed through. "Blemish" (a physical mark or flaw) is too narrow; "sketch" (a rough drawing) doesn\'t fit; "amount" (a quantity) doesn\'t convey the idea of detectable signs.',
+    tier: 3, xp: 20, domain: 'usage',
+  },
+  {
+    id: 'slwc012',
+    sentence: "Many ancient sculptures of people's heads are missing their noses. This is because the nose is the most ______ part of a sculpture of a person's head. It is delicate and sticks out from the rest of the sculpture, making it especially easy to break.",
+    question: 'Which choice completes the text with the most logical and precise word or phrase?',
+    options: ['Recognizable', 'Fragile', 'Common', 'Sophisticated'],
+    answer: 1,
+    explanation: '"Fragile" (easily broken or damaged) is directly supported by "delicate" and "especially easy to break." The entire second sentence provides the definition: delicate + sticks out = fragile. "Recognizable," "common," and "sophisticated" do not explain why noses break off.',
+    tier: 2, xp: 15, domain: 'usage',
+  },
+  {
+    id: 'slwc013',
+    sentence: "K.D. Leka and colleagues found that the Sun's corona provides an advance indication of solar flares—intense eruptions that can interfere with telecommunications on Earth. Preceding a flare, the corona temporarily exhibits increased brightness above the region where the flare is ______.",
+    question: 'Which choice completes the text with the most logical and precise word or phrase?',
+    options: ['Antecedent', 'Impending', 'Innocuous', 'Perpetual'],
+    answer: 1,
+    explanation: '"Impending" (about to happen, imminent) correctly completes the sentence. The corona brightens before a solar flare occurs—so the flare is about to happen. "Antecedent" (a preceding thing) is used differently; "innocuous" (harmless) contradicts the damaging nature of flares; "perpetual" (never-ending) doesn\'t fit a discrete event.',
+    tier: 3, xp: 20, domain: 'usage',
+  },
+  {
+    id: 'slwc014',
+    sentence: "To demonstrate that underground metal pipes can be assessed without unearthing them, engineer Aroba Saleem and colleagues ______ the tendency of some metals' internal magnetic fields to alter under stress: the team showed that such alterations can be measured from a distance.",
+    question: 'Which choice completes the text with the most logical and precise word or phrase?',
+    options: ['Hypothesized', 'Discounted', 'Redefined', 'Exploited'],
+    answer: 3,
+    explanation: '"Exploited" (made productive use of) correctly describes using a natural property of metals to their advantage—they turned the metal\'s magnetic behavior into a diagnostic tool. They didn\'t merely theorize ("hypothesized"), dismiss ("discounted"), or change the meaning of ("redefined") this tendency.',
+    tier: 3, xp: 20, domain: 'usage',
+  },
+  {
+    id: 'slwc015',
+    sentence: "Despite the generalizations about human behavior they have produced, many studies of behavioral psychology have used highly unrepresentative subject pools: students at the colleges where the researchers are employed. To ______ this situation, it is necessary to actively recruit subjects from diverse backgrounds and locations.",
+    question: 'Which choice completes the text with the most logical and precise word or phrase?',
+    options: ['Sanction', 'Ameliorate', 'Rationalize', 'Postulate'],
+    answer: 1,
+    explanation: '"Ameliorate" (to make a bad situation better) is the right choice. The researchers want to fix the problem of unrepresentative subject pools by recruiting diverse participants. "Sanction" would approve of the problem; "rationalize" would explain it away; "postulate" is about forming hypotheses.',
+    tier: 3, xp: 20, domain: 'usage',
+  },
+
+  // ── Test 5 · Module 2 ──────────────────────────────────────
+  {
+    id: 'slwc016',
+    sentence: "A team of paleontologists has found a rich fossil deposit near Gulgong, Australia. The fossils are so well preserved that the team has been able to ______ detailed information about the life forms that left them behind, such as color patterns and how they interacted with other species.",
+    question: 'Which choice completes the text with the most logical and precise word or phrase?',
+    options: ['Occupy', 'Hoard', 'Reserve', 'Obtain'],
+    answer: 3,
+    explanation: '"Obtain" (to get or acquire) is the only choice that fits—the team was able to gather detailed information from the fossils. "Occupy" (to take up space), "hoard" (to accumulate selfishly), and "reserve" (to set aside for later) do not express the idea of acquiring scientific information.',
+    tier: 2, xp: 15, domain: 'usage',
+  },
+  {
+    id: 'slwc017',
+    sentence: "From Elizabeth von Arnim's 1922 novel: '\"I'm going to have one of these gorgeous oranges,\" said Mrs. Wilkins, staying where she was and ______ a black bowl piled with them.' As used in this passage, what does 'reaching across to' most nearly mean?",
+    question: 'As used in the text, what does "reaching across to" most nearly mean?',
+    options: ['Joining with', 'Gaining on', 'Stretching toward', 'Arriving at'],
+    answer: 2,
+    explanation: '"Stretching toward" best captures the physical action. Mrs. Wilkins stays in place but extends her arm toward the bowl—she stretches toward it without moving toward it. "Joining with" and "arriving at" are not physical reaching gestures; "gaining on" (getting closer in a race) doesn\'t fit.',
+    tier: 2, xp: 15, domain: 'usage',
+  },
+  {
+    id: 'slwc018',
+    sentence: "According to neuroeconomists from the University of Zurich, ease of decision making may be linked to communication between two brain regions. Individuals tend to be more decisive if the information flow between the regions is intensified, whereas they make choices more slowly when information flow is ______.",
+    question: 'Which choice completes the text with the most logical and precise word or phrase?',
+    options: ['Reduced', 'Evaluated', 'Determined', 'Acquired'],
+    answer: 0,
+    explanation: '"Reduced" (diminished or decreased) is the logical opposite of "intensified" and completes the contrast: more flow = more decisive; less flow = slower decisions. "Evaluated," "determined," and "acquired" do not create the contrast the "whereas" requires.',
+    tier: 2, xp: 15, domain: 'usage',
+  },
+  {
+    id: 'slwc019',
+    sentence: "The War of 1812 has ______ place in historical memory in Britain, partly because it is overshadowed by the larger concurrent conflict against Napoleonic France and partly because it essentially maintained the geopolitical status quo for Britain.",
+    question: 'Which choice completes the text with the most logical and precise word or phrase?',
+    options: ['A tenuous', 'An enduring', 'A contentious', 'A conspicuous'],
+    answer: 0,
+    explanation: '"A tenuous" (weak, slight, or insignificant) place in memory is supported by both reasons given: the war is overshadowed and changed little for Britain. "An enduring" and "a conspicuous" place would mean it is well remembered—the opposite of the text\'s argument.',
+    tier: 3, xp: 20, domain: 'usage',
+  },
+  {
+    id: 'slwc020',
+    sentence: "Claims about the original significance of Minoan bull-leaping rituals—depicted in art from the second millennium BCE—are difficult to successfully ______. We know so little about the Minoans that assertions about what bull-leaping meant to them will almost inevitably rely on significant speculation and guesswork.",
+    question: 'Which choice completes the text with the most logical and precise word or phrase?',
+    options: ['Imagine', 'Summarize', 'Defend', 'Adjust'],
+    answer: 2,
+    explanation: '"Defend" (justify with evidence) is correct. Claims are "difficult to defend" because they rely on speculation—you can\'t prove them convincingly. "Imagine" (picture in the mind) is too vague; "summarize" (give a brief account) and "adjust" (alter slightly) don\'t capture the challenge of supporting claims with limited evidence.',
+    tier: 3, xp: 20, domain: 'usage',
+  },
+
+
+  // ═══════════════════════════════════════════════════════════
+  //  STANDARD ENGLISH CONVENTIONS  —  slec001–025
+  //  "Which choice conforms to conventions of Standard English?"
+  // ═══════════════════════════════════════════════════════════
+
+  // ── Test 11 · Module 1 ─────────────────────────────────────
+  {
+    id: 'slec001',
+    sentence: "Click restraint is the practice of scanning a search results page and evaluating what you see before deciding which link ______",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['should you choose.', 'you should choose?', 'should you choose?', 'you should choose.'],
+    answer: 3,
+    explanation: 'This is an indirect (embedded) question inside a statement. Indirect questions use declarative word order (subject + verb = "you should choose"), not interrogative order ("should you choose"), and end with a period since the overall sentence is a statement, not a question.',
+    tier: 2, xp: 15, domain: 'boundaries',
+  },
+  {
+    id: 'slec002',
+    sentence: "Following her debut album in 2002, Mexican singer-songwriter Natalia Lafourcade quickly shot to fame. By 2023, she ______ one of the most celebrated musicians in Latin America, having released twelve albums and won seventeen Latin Grammy awards.",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['will become', 'becomes', 'will have become', 'had become'],
+    answer: 3,
+    explanation: '"Had become" (past perfect) is correct. "By 2023" establishes a past reference point, and her becoming celebrated occurred before or up to that past moment. "Will become" and "will have become" are future tenses; "becomes" is present—none fit a past-time narrative anchored to "By 2023."',
+    tier: 2, xp: 15, domain: 'agreement',
+  },
+  {
+    id: 'slec003',
+    sentence: "The rough frog is a species of amphibian native to Australia. Currently, the frog's range ______ parts of northern New South Wales and southeastern Queensland.",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['includes', 'included', 'will have included', 'had included'],
+    answer: 0,
+    explanation: '"Includes" (simple present) is correct. The word "Currently" establishes that we are describing the frog\'s present-day geographic range. All other tenses conflict with "currently."',
+    tier: 2, xp: 15, domain: 'agreement',
+  },
+  {
+    id: 'slec004',
+    sentence: "According to the original text of the US Constitution, the presidential candidate receiving the second-most Electoral College votes becomes vice president. The 12th Amendment, ratified in ______ separated the elections for the two offices.",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['1804—', '1804,', '1804:', '1804'],
+    answer: 0,
+    explanation: 'An em dash (—) sets off the date as a parenthetical and separates it from the predicate "separated the elections." A single comma after "1804" without a closing comma would create an incorrect pair; a colon introduces a list or explanation rather than closing a modifier; no punctuation would run the modifier into the verb.',
+    tier: 3, xp: 20, domain: 'boundaries',
+  },
+  {
+    id: 'slec005',
+    sentence: "The musical scores of Japanese composer Hiroyuki Sawano are famous for their mysterious titles. Laden with emojis and seemingly meaningless words, and driven largely by Sawano's \"personal feeling and mood,\" ______",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: [
+      "the listener can approach each piece free from expectations because of the titles.",
+      "the titles allow the listener to approach each piece free from expectations.",
+      "each piece can be approached by the listener free from expectations because of the titles.",
+      "the listener's approach to each piece because of the titles can be free from expectations.",
+    ],
+    answer: 1,
+    explanation: 'The opening participial phrase "Laden with emojis... driven by Sawano\'s mood" must modify the grammatical subject of the main clause. Only "the titles" can be laden with emojis. Every other option makes the listener or "each piece" the subject, creating a dangling modifier.',
+    tier: 3, xp: 20, domain: 'modifiers',
+  },
+  {
+    id: 'slec006',
+    sentence: "Artist Yto Barrada's exhibition Ways to Baffle the Wind incorporates sculptures, textiles, and films. Barrada's pieces, utilizing elements as disparate as plant-dyed fabrics, wire crab traps filled with stones, and cotton balls dangling above a fan, ______ the ways humans attempt to organize and regulate nature.",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['explore', 'has explored', 'explores', 'exploring'],
+    answer: 0,
+    explanation: 'The subject "Barrada\'s pieces" is plural, requiring the plural verb "explore." "Explores" and "has explored" are singular. "Exploring" is a participle—it cannot stand alone as the main verb of the clause. The long participial phrase between the subject and verb does not change the subject\'s number.',
+    tier: 2, xp: 15, domain: 'agreement',
+  },
+
+  // ── Test 11 · Module 2 ─────────────────────────────────────
+  {
+    id: 'slec007',
+    sentence: "Ganga is a folk singing tradition that originated in the Dinaric Alps in southern Europe. Ganga singers sing different melodies at the same time. The clashing notes can echo a long way across the mountains, which is why ______",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: [
+      'ganga has been used as a communication method?',
+      'ganga has been used as a communication method.',
+      'has ganga been used as a communication method.',
+      'has ganga been used as a communication method?',
+    ],
+    answer: 1,
+    explanation: '"Which is why" introduces a subordinate clause inside a declarative statement. Subordinate clauses use normal word order (subject + verb: "ganga has been used"), not question word order. The sentence ends with a period because the overall sentence is a statement, not a question.',
+    tier: 2, xp: 15, domain: 'boundaries',
+  },
+  {
+    id: 'slec008',
+    sentence: "A popular suite of mapping software, ArcGIS enables cartographers like Karachi Cartography founder Namra Khalid ______ maps by analyzing and arranging raw geospatial data.",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['create', 'to create', 'creating', 'created'],
+    answer: 1,
+    explanation: '"Enable" takes the pattern: enables + [person] + to + [infinitive]. The correct structure is "enables Namra Khalid to create maps." The bare infinitive is used with make/help/let—not "enable." "Creating" and "created" are not infinitives and do not fit the required pattern.',
+    tier: 2, xp: 15, domain: 'agreement',
+  },
+  {
+    id: 'slec009',
+    sentence: "The part of a compound that determines the compound's color is ______ the chromophore. One example of a chromophore is hemoglobin, which gives human blood its red color.",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['called,', 'called', 'called—', 'called;'],
+    answer: 1,
+    explanation: 'No punctuation is needed between "is called" and "the chromophore." They form a complete, uninterrupted predicate: "is called the chromophore." A comma, dash, or semicolon would incorrectly separate the verb from its predicate complement.',
+    tier: 2, xp: 15, domain: 'boundaries',
+  },
+  {
+    id: 'slec010',
+    sentence: "In rural Minnesota, ecologist Leroy Walston conducted a study to determine whether seeding solar panel fields with wildflowers could bolster pollinator populations. Walston's findings indicate that—assuming solar panel installers' ______ practice has the potential to increase the number of native bees in crops near solar fields throughout the Midwest by up to 20 percent.",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['cooperation, this', 'cooperation—this', 'cooperation: this', 'cooperation this'],
+    answer: 0,
+    explanation: 'An em dash after "indicate that—" opens the parenthetical condition "assuming solar panel installers\' cooperation." A comma after "cooperation" closes that condition before "this practice has the potential..." The pair—dash to open, comma to close—correctly brackets the conditional phrase.',
+    tier: 3, xp: 20, domain: 'boundaries',
+  },
+  {
+    id: 'slec011',
+    sentence: "Key-value pairs are an important aspect of JSON. Keys function as labels, while values contain the actual information. In a JSON file storing data about fire belly ______ instance, you could encounter a key such as \"species\" with the associated value of \"Cynops orientalis.\"",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['newts. For', 'newts, for', 'newts: for', 'newts; for'],
+    answer: 0,
+    explanation: '"newts. For" creates two correctly punctuated sentences: "In a JSON file storing data about fire belly newts." and "For instance, you could encounter..." A comma creates a comma splice between two independent clauses; a colon or semicolon would also incorrectly join them given the transitional phrase "For instance."',
+    tier: 3, xp: 20, domain: 'boundaries',
+  },
+  {
+    id: 'slec012',
+    sentence: "Most of the ice found on Earth is ice Ih, distinguished by a crystalline hexagonal structure. Amorphous ice constitutes most of the ice in the ultrafrigid environment of outer space. Defined by a disorganized molecular structure, ______",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: [
+      'ice Ih contains crystals, whereas amorphous ice, which lacks the thermal energy to form them, does not.',
+      'amorphous ice lacks the thermal energy to form the crystals found in ice Ih.',
+      'the lack of thermal energy in amorphous ice explains its inability to form the crystals found in ice Ih.',
+      'ice Ih differs from amorphous ice in that it possesses the thermal energy to form crystals.',
+    ],
+    answer: 1,
+    explanation: 'The participial phrase "Defined by a disorganized molecular structure" must modify the sentence\'s grammatical subject. Only "amorphous ice" can be defined by a disorganized structure. All other options make "ice Ih," "the lack," or "ice Ih" the subject—each creating a dangling modifier.',
+    tier: 3, xp: 20, domain: 'modifiers',
+  },
+  {
+    id: 'slec013',
+    sentence: "If an animal can recognize itself in a mirror ('the mirror test'), it is considered to have self-awareness. In a recent study, scientists ______ for evidence of self-awareness in snakes—species that rely primarily on olfactory rather than visual processing—adapted the test to foreground smell.",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['searched', 'searching', 'were searching', 'have searched'],
+    answer: 0,
+    explanation: '"Searched" (simple past) is the correct finite verb for a completed research action described in a past-tense narrative. "Searching" is a participle, not a main verb. "Were searching" implies an ongoing action that was interrupted, which doesn\'t fit a completed study. "Have searched" (present perfect) doesn\'t fit a clearly past-tense account.',
+    tier: 2, xp: 15, domain: 'agreement',
+  },
+
+  // ── Test 5 · Module 1 ──────────────────────────────────────
+  {
+    id: 'slec014',
+    sentence: "Lê Lương Minh became the thirteenth secretary-general of the Association of Southeast Asian Nations (ASEAN) in January 2013, making ______ the first time the organization would appoint a Vietnamese leader.",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['these', 'those', 'this', 'some'],
+    answer: 2,
+    explanation: '"This" is the correct singular pronoun referring to the specific event just described—making Lê\'s appointment "this the first time." "These" and "those" are plural; "some" is indefinite and doesn\'t refer clearly to the specific appointment.',
+    tier: 2, xp: 15, domain: 'agreement',
+  },
+  {
+    id: 'slec015',
+    sentence: "In 1929, Edwin Herbert Land invented a polarizing filter featured in products from sunglasses to 3D movies. A decade later, Land ______ his technology to invent the world's first instant camera, the Polaroid Land camera.",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['used', 'to have used', 'to use', 'using'],
+    answer: 0,
+    explanation: '"Used" (simple past) is the only finite verb form that can serve as the main verb of this past-tense narrative sentence. "To have used," "to use," and "using" are non-finite forms—they cannot stand alone as the main verb of an independent clause.',
+    tier: 2, xp: 15, domain: 'agreement',
+  },
+  {
+    id: 'slec016',
+    sentence: "The best way to avoid demonetization is to choose music from the public domain. Using one of these noncopyrighted songs ______ a creator won't lose advertising revenue.",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['are ensuring', 'have ensured', 'ensure', 'ensures'],
+    answer: 3,
+    explanation: '"Using one of these noncopyrighted songs" is a gerund phrase—grammatically singular—requiring the singular verb "ensures." "Are ensuring" and "ensure" (bare plural form) are plural; "have ensured" is also plural and past. The subject is the act of using the songs, which is a single concept.',
+    tier: 2, xp: 15, domain: 'agreement',
+  },
+  {
+    id: 'slec017',
+    sentence: "What makes the theremin a unique musical instrument? You play it without touching it. When you place your ______ the pitch will shift as your hands move through the air.",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ["hand's between the two antenna's,", 'hands between the two antennas,', "hands' between the two antennas',", "hands' between the two antennas,"],
+    answer: 1,
+    explanation: '"Hands" is simply the plural of "hand"—no apostrophe needed for a regular plural noun. "Antennas" is the plural of "antenna"—again, no apostrophe. Apostrophes mark possessives (hand\'s = belonging to the hand) or contractions, not regular plurals.',
+    tier: 2, xp: 15, domain: 'boundaries',
+  },
+  {
+    id: 'slec018',
+    sentence: "In the music video for 'We Didn't Start the Fire' by Billy Joel, the singer lists 118 political and cultural references. Such iconic references, cited in rapid and frenetic procession by the musician, who is seated impassively at a dinner table, ______ key moments and personalities of the twentieth century.",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['represents', 'has represented', 'was representing', 'represent'],
+    answer: 3,
+    explanation: '"Such iconic references" is a plural subject requiring the plural verb "represent." "Represents," "has represented," and "was representing" are singular or past forms that do not agree with a plural subject. The long participial phrase between subject and verb does not change the subject\'s number.',
+    tier: 2, xp: 15, domain: 'agreement',
+  },
+  {
+    id: 'slec019',
+    sentence: "Long attributed to Jacques-Louis David, the 1801 painting Marie Joséphine Charlotte du Val d'Ognes gained fresh attention in the 1990s when art historians discovered that the painting was actually the work of little-known French portrait ______ Marie-Denise Villers (1774–1821).",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['artist—', 'artist', 'artist:', 'artist,'],
+    answer: 0,
+    explanation: 'An em dash (—) introduces the specific name "Marie-Denise Villers" as an elaboration on "portrait artist"—signaling that what follows identifies exactly who is meant. A colon could introduce the name but is less precise after a noun phrase; a comma is too weak; no punctuation would merge the noun with the name awkwardly.',
+    tier: 3, xp: 20, domain: 'boundaries',
+  },
+
+  // ── Test 5 · Module 2 ──────────────────────────────────────
+  {
+    id: 'slec020',
+    sentence: "How did whales, once no bigger than seals, evolve to become the largest animals on Earth? Brazilian biologist Mariana Nery believes the answer might be found in whales' DNA. In January 2023, Nery and her colleagues ______ a study showing changes over time in four whale genes associated with body size.",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['published', 'publishing', 'having published', 'to publish'],
+    answer: 0,
+    explanation: '"Published" (simple past) is the only finite verb that can serve as the main verb of the sentence. "Publishing," "having published," and "to publish" are non-finite forms—they cannot stand alone as the main verb of an independent clause in a past-tense narrative.',
+    tier: 2, xp: 15, domain: 'agreement',
+  },
+  {
+    id: 'slec021',
+    sentence: "A harpsichord may look just like a piano, but the difference between the two instruments is easy to hear. When a harpsichord's keys are pressed, the strings inside the ______ are plucked, not struck.",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['instrument:', 'instrument', 'instrument—', 'instrument,'],
+    answer: 1,
+    explanation: 'No punctuation is needed between "the strings inside the instrument" and "are plucked." "Instrument" is simply the object of the preposition "inside," and no comma, colon, or dash should interrupt the noun phrase "the strings inside the instrument."',
+    tier: 2, xp: 15, domain: 'boundaries',
+  },
+  {
+    id: 'slec022',
+    sentence: "When they were first introduced to western Europe in the eleventh century, table forks were met with much resistance. The Bishop of Ostia, St. Peter Damian, condemned the eating utensils because he considered ______ dangerous and unnecessary luxury items.",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['them', 'this', 'that', 'it'],
+    answer: 0,
+    explanation: '"Them" is the correct plural pronoun referring back to "table forks" (or "eating utensils")—both plural nouns. "This," "that," and "it" are singular and cannot correctly refer to plural nouns.',
+    tier: 2, xp: 15, domain: 'agreement',
+  },
+  {
+    id: 'slec023',
+    sentence: "Julia Alvarez's 1994 novel In the Time of the Butterflies, a fictionalized account of the lives of the Mirabal ______ can serve as a starting point for those wanting to explore how the rule of dictator Rafael Trujillo has been represented in Dominican American literature.",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['sisters, and', 'sisters and', 'sisters,', 'sisters'],
+    answer: 2,
+    explanation: '"Sisters," closes the appositive phrase that began with a comma after "Butterflies": "[novel], [a fictionalized account of the lives of the Mirabal sisters], can serve..." Two commas bracket the nonrestrictive appositive. "Sisters and" would start an incomplete list; "sisters" alone leaves the appositive unclosed.',
+    tier: 3, xp: 20, domain: 'boundaries',
+  },
+  {
+    id: 'slec024',
+    sentence: "In her 1983 book The Managed Heart, sociologist Arlie Russell Hochschild explored her conception of a 'sociology of emotions'—the idea that the various cultural and ideological frameworks a person has internalized (class, gender, political affiliation, etc.) ______ each emotional reaction that person has within a situation.",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['underlies', 'is underlying', 'underlie', 'has been underlying'],
+    answer: 2,
+    explanation: '"The various cultural and ideological frameworks" is a plural subject requiring the plural verb "underlie." "Underlies," "is underlying," and "has been underlying" are singular forms. The long parenthetical "(class, gender, political affiliation, etc.)" does not change the number of the subject.',
+    tier: 3, xp: 20, domain: 'agreement',
+  },
+  {
+    id: 'slec025',
+    sentence: "American abstract artist Richard ______ his installations to make passersby keenly aware of how one's movements are affected by the physical features of one's environment, assembles large-scale steel plates into sculptures that dominate the outdoor spaces they occupy.",
+    question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
+    options: ['Serra is intending', 'Serra, intends', 'Serra, intending', 'Serra intends'],
+    answer: 2,
+    explanation: '"Serra, intending" places "intending his installations to make passersby aware" as a participial phrase modifying Richard Serra. The main verb "assembles" then follows. "Serra intends... assembles" would create two main verbs without a conjunction; "Serra, intends" incorrectly places a comma before the main verb.',
+    tier: 3, xp: 20, domain: 'modifiers',
+  },
+
+
+  // ═══════════════════════════════════════════════════════════
+  //  TRANSITIONS  —  sltr001–016
+  //  "Which choice completes the text with the most logical
+  //   transition?"
+  // ═══════════════════════════════════════════════════════════
+
+  // ── Test 11 · Module 1 ─────────────────────────────────────
+  {
+    id: 'sltr001',
+    sentence: "The tiny transistors that control the flow of electricity in modern devices may one day be made of wood. Researchers in Switzerland have found a way to use heat and chemicals to widen the grooves in dry pieces of balsa wood. ______ these grooves become wide enough that electrical conductors can be passed through them.",
+    question: 'Which choice completes the text with the most logical transition?',
+    options: ['For example,', 'Previously,', 'In contrast,', 'As a result,'],
+    answer: 3,
+    explanation: '"As a result" signals that widening the grooves (the cause) leads to the grooves being large enough for electrical conductors (the effect). "For example" introduces an illustration; "previously" signals a past event; "in contrast" signals an opposing idea.',
+    tier: 2, xp: 15, domain: 'usage',
+  },
+  {
+    id: 'sltr002',
+    sentence: "Al-Andalus, the historical region of the Iberian Peninsula, was ruled by various Arabic-speaking Muslim states between the eighth and fifteenth centuries. ______ many Arabic words, such as 'alacrán'—meaning 'scorpion'—made their way into the Spanish language.",
+    question: 'Which choice completes the text with the most logical transition?',
+    options: ['For example,', 'Instead,', 'Specifically,', 'Consequently,'],
+    answer: 3,
+    explanation: '"Consequently" (as a result) is correct because Arabic rule of the Iberian Peninsula directly caused Arabic words to enter Spanish. "For example" would introduce an instance of a broader claim; "instead" signals a contrast; "specifically" narrows a previous point.',
+    tier: 2, xp: 15, domain: 'usage',
+  },
+  {
+    id: 'sltr003',
+    sentence: "Imagine a magazine that a reader has thrown away. This magazine is post-consumer waste, as it became waste after reaching the consumer. ______ the paper scraps left over from printing the magazine are pre-consumer waste, as they became waste before reaching the consumer.",
+    question: 'Which choice completes the text with the most logical transition?',
+    options: ['By contrast,', 'For example,', 'As a result,', 'Specifically,'],
+    answer: 0,
+    explanation: '"By contrast" introduces the opposing type of waste (pre-consumer) to contrast with the previously defined type (post-consumer). "For example" would introduce an instance; "as a result" signals a consequence; "specifically" narrows a point.',
+    tier: 2, xp: 15, domain: 'usage',
+  },
+  {
+    id: 'sltr004',
+    sentence: "In astrophysics, a ring of debris orbiting within an object's Roche limit is expected to persist as a ring, whereas a ring outside this limit would likely accrete into a satellite. Bruno Morgado and colleagues, ______ detected a dense ring of material orbiting Quaoar at 2,500 miles—well outside the calculated Roche limit of 1,100 miles—that has remained intact.",
+    question: 'Which choice completes the text with the most logical transition?',
+    options: ['though,', 'for example,', 'fittingly,', 'likewise,'],
+    answer: 0,
+    explanation: '"Though" (however, despite this) signals the contrast: theory predicts the ring should accrete into a satellite, but it remained intact. "Fittingly" would say the finding confirms theory—the opposite; "likewise" means similarly; "for example" introduces an illustration.',
+    tier: 3, xp: 20, domain: 'usage',
+  },
+
+  // ── Test 11 · Module 2 ─────────────────────────────────────
+  {
+    id: 'sltr005',
+    sentence: "The traditional process of Turkish paper marbling (ebru) generally proceeds like this: First, the artisan fills a shallow tray with water. Next, the artisan adds inks or paints, which can then be manipulated into intricate designs. ______ the artisan slips paper in and out of the liquid, transferring the design onto the paper.",
+    question: 'Which choice completes the text with the most logical transition?',
+    options: ['Actually,', 'Therefore,', 'Nevertheless,', 'Finally,'],
+    answer: 3,
+    explanation: '"Finally" signals the last step in a sequential process established by "First" and "Next." "Actually" introduces a correction; "therefore" signals a logical conclusion; "nevertheless" signals a contrast—none fit a numbered sequence.',
+    tier: 2, xp: 15, domain: 'usage',
+  },
+  {
+    id: 'sltr006',
+    sentence: "While studying jorō spiders, University of Georgia researchers wondered if the spiders' rapid spread was a result of aggressive behavior. ______ they discovered that jorō spiders are gentle giants who react to even minor disturbances by 'freezing' in place for an hour or more.",
+    question: 'Which choice completes the text with the most logical transition?',
+    options: ['Therefore,', 'Instead,', 'For example,', 'In other words,'],
+    answer: 1,
+    explanation: '"Instead" signals that the finding (spiders are gentle/passive) is the opposite of the hypothesis (aggressive behavior). "Therefore" confirms a hypothesis; "for example" introduces an illustration; "in other words" restates something—none fit a finding that contradicts an expectation.',
+    tier: 2, xp: 15, domain: 'usage',
+  },
+  {
+    id: 'sltr007',
+    sentence: "Upper-atmospheric jets—narrow cones of blue light that burst upward from thunderclouds—have been observed reaching the ionosphere (~80 km above Earth), marking these jets as outliers; ______ the majority of jets reach heights of only 20 to 50 km.",
+    question: 'Which choice completes the text with the most logical transition?',
+    options: ['nevertheless,', 'consequently,', 'indeed,', 'in addition,'],
+    answer: 2,
+    explanation: '"Indeed" (in fact, truly) intensifies and confirms the outlier claim: the ionosphere-reaching jets are outliers—in fact, most jets only go 20–50 km. "Nevertheless" signals a reversal; "consequently" signals a result; "in addition" adds another point.',
+    tier: 3, xp: 20, domain: 'usage',
+  },
+  {
+    id: 'sltr008',
+    sentence: "In Annie Dillard's Pilgrim at Tinker Creek, Dillard struggles to reconcile the complicated juxtapositions of the natural world—marveling at a goldfish's fins but wincing at imagining goldfish eating their own eggs. ______ nature's mesmerizing intricacy and pitiless harshness prove inextricably linked for Dillard, like 'two branches of the same creek.'",
+    question: 'Which choice completes the text with the most logical transition?',
+    options: ['To that end,', 'Ultimately,', 'Moreover,', 'Hence,'],
+    answer: 1,
+    explanation: '"Ultimately" (in the end, after all considerations) signals the conclusion reached after Dillard\'s struggle. "To that end" means "for that purpose"; "moreover" adds more of the same; "hence" signals a direct logical consequence—none capture reaching a final understanding after deliberation.',
+    tier: 3, xp: 20, domain: 'usage',
+  },
+
+  // ── Test 5 · Module 1 ──────────────────────────────────────
+  {
+    id: 'sltr009',
+    sentence: "Celebrated Tewa potter Maria Martinez made her signature all-black ceramic vessels using a technique called reduction firing. This technique involves smothering the flame surrounding the clay vessel. ______ the vessel takes on a shiny, black hue.",
+    question: 'Which choice completes the text with the most logical transition?',
+    options: ['On the contrary,', 'For example,', 'Previously,', 'As a result,'],
+    answer: 3,
+    explanation: '"As a result" signals that the black hue (the effect) is caused by smothering the flame (the cause). "On the contrary" introduces an opposition; "for example" introduces an illustration; "previously" indicates something that came before.',
+    tier: 2, xp: 15, domain: 'usage',
+  },
+  {
+    id: 'sltr010',
+    sentence: "Historians agree that jazz pianist Jelly Roll Morton was exaggerating when he claimed to have invented jazz music. No one can deny, ______ Morton's innovative compositions and remarkable improvisational skills helped shape jazz as a genre during its early years.",
+    question: 'Which choice completes the text with the most logical transition?',
+    options: ['therefore,', 'in the second place,', 'in other words,', 'though,'],
+    answer: 3,
+    explanation: '"Though" (however) creates the concession: Morton exaggerated, but we must still acknowledge his real contributions. "Therefore" would confirm the exaggeration; "in the second place" introduces a second argument; "in other words" restates—none fit a concessive acknowledgment of genuine contributions.',
+    tier: 2, xp: 15, domain: 'usage',
+  },
+  {
+    id: 'sltr011',
+    sentence: "According to Duverger's law, countries with single-ballot majoritarian elections tend to polarize into two-party systems. ______ countries with proportional-representation systems tend to support multi-partyism, under which power gets distributed among many political parties.",
+    question: 'Which choice completes the text with the most logical transition?',
+    options: ['Subsequently,', 'Conversely,', 'For instance,', 'In other words,'],
+    answer: 1,
+    explanation: '"Conversely" (on the other hand) signals a direct contrast: majoritarian → two-party; proportional → multi-party. "Subsequently" signals something that follows in time; "for instance" introduces an example; "in other words" restates.',
+    tier: 2, xp: 15, domain: 'usage',
+  },
+  {
+    id: 'sltr012',
+    sentence: "A turtle shell appears external to the animal, protecting its body like armor. ______ the shell is often incorrectly assumed to be an exoskeleton, when in fact it is an endoskeleton, a part of the turtle's internal bone structure.",
+    question: 'Which choice completes the text with the most logical transition?',
+    options: ['That being said,', 'However,', 'For instance,', 'Hence,'],
+    answer: 1,
+    explanation: '"However" signals the contrast between the shell\'s outward appearance (looks external, like armor) and its actual anatomical nature (is really part of the internal skeleton). "Hence" would say the external appearance causes the misconception, which is possible but less precise than "however."',
+    tier: 2, xp: 15, domain: 'usage',
+  },
+
+  // ── Test 5 · Module 2 ──────────────────────────────────────
+  {
+    id: 'sltr013',
+    sentence: "In 1986, Frank Zamboni developed an ice rink resurfacing machine. As the machine moved along the rink, it first scraped off the top layer of ice. ______ it sprayed water into the deep grooves left behind by customers' skates. Lastly, it smoothed over the newly formed ice.",
+    question: 'Which choice completes the text with the most logical transition?',
+    options: ['For example,', 'Next,', 'Similarly,', 'In contrast,'],
+    answer: 1,
+    explanation: '"Next" signals the second step in a sequential process established by "first" and concluded by "lastly." "For example" introduces an illustration; "similarly" introduces a parallel example; "in contrast" introduces an opposition.',
+    tier: 2, xp: 15, domain: 'usage',
+  },
+  {
+    id: 'sltr014',
+    sentence: "In 2014, Nestor Gomez won his first storytelling competition, relating a tale about his life as a Guatemalan immigrant in Chicago. ______ in 2017, Gomez created the show 80 Minutes Around the World as a platform for others to share immigration stories.",
+    question: 'Which choice completes the text with the most logical transition?',
+    options: ['Instead,', 'For example,', 'Later,', 'In other words,'],
+    answer: 2,
+    explanation: '"Later" signals that the 2017 event happened after the 2014 competition—a later point on the timeline. "Instead" introduces an alternative; "for example" introduces an illustration; "in other words" restates.',
+    tier: 2, xp: 15, domain: 'usage',
+  },
+  {
+    id: 'sltr015',
+    sentence: "To guarantee the validity of experimental results, scientists rely on precise, unchanging standards of measurement. ______ metrologists (scientists who study measurement) developed the SI, or International System of Units—a set of units based on unchanging values in nature.",
+    question: 'Which choice completes the text with the most logical transition?',
+    options: ['In contrast,', 'Regardless,', 'In addition,', 'For this reason,'],
+    answer: 3,
+    explanation: '"For this reason" signals that developing the SI (the effect) was caused by scientists\' need for precise, unchanging standards (the cause). "In contrast" introduces an opposition; "regardless" dismisses the prior point; "in addition" simply adds another point.',
+    tier: 2, xp: 15, domain: 'usage',
+  },
+  {
+    id: 'sltr016',
+    sentence: "One lesson of the Human Genome Project is that a gene is affected by many factors, including its interactions with the protein products of other genes. ______ rather than just focusing on the human genome, efforts to better understand gene mutations related to disease have begun to consider the human proteome, the complete set of proteins expressed by human genes.",
+    question: 'Which choice completes the text with the most logical transition?',
+    options: ['In other words,', 'That said,', 'For example,', 'Accordingly,'],
+    answer: 3,
+    explanation: '"Accordingly" (as a result, consequently) signals that the shift in research focus (studying the proteome) is a direct consequence of the lesson learned (genes are affected by protein interactions). "In other words" restates; "that said" introduces a contrasting idea; "for example" introduces an illustration.',
+    tier: 2, xp: 15, domain: 'usage',
+  },
+];
