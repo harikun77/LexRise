@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { generateDailyQuests } from '../data/quests';
 import { updateSM2 } from '../utils/sm2';
+import { idbSave, idbLoad } from '../utils/idbStorage';
 
 const STORAGE_KEY = 'lexrise_save';
 
@@ -49,33 +50,40 @@ const DEFAULT_STATE = {
   vocabSM2: {},   // SM-2 records: { wordId: { easeFactor, interval, repetitions, nextReview } }
 };
 
+// ── Deep merge helper ────────────────────────────────────
+function mergeWithDefaults(saved) {
+  return {
+    ...DEFAULT_STATE,
+    ...saved,
+    player: { ...DEFAULT_STATE.player, ...(saved.player || {}) },
+    skills: {
+      vocabulary: { ...DEFAULT_STATE.skills.vocabulary, ...(saved.skills?.vocabulary || {}) },
+      grammar:    { ...DEFAULT_STATE.skills.grammar,    ...(saved.skills?.grammar    || {}) },
+      reading:    { ...DEFAULT_STATE.skills.reading,    ...(saved.skills?.reading    || {}) },
+    },
+    vocabSM2: { ...(saved.vocabSM2 || {}) },
+  };
+}
+
+// ── Load: localStorage first, fall back to IndexedDB ────
+// loadState is called synchronously on React init, so it reads
+// localStorage. The async IDB fallback runs as a side-effect if
+// localStorage is empty (i.e. was cleared by iOS Safari).
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_STATE;
-    const saved = JSON.parse(raw);
-    // Deep merge so new fields added to DEFAULT_STATE are picked up by
-    // existing saves automatically — no progress wipe on schema changes.
-    return {
-      ...DEFAULT_STATE,
-      ...saved,
-      player: { ...DEFAULT_STATE.player, ...(saved.player || {}) },
-      skills: {
-        vocabulary: { ...DEFAULT_STATE.skills.vocabulary, ...(saved.skills?.vocabulary || {}) },
-        grammar:    { ...DEFAULT_STATE.skills.grammar,    ...(saved.skills?.grammar    || {}) },
-        reading:    { ...DEFAULT_STATE.skills.reading,    ...(saved.skills?.reading    || {}) },
-      },
-      // Preserve existing SM-2 records; new keys default to empty object
-      vocabSM2: { ...(saved.vocabSM2 || {}) },
-    };
-  } catch {
-    return DEFAULT_STATE;
-  }
+    if (raw) return mergeWithDefaults(JSON.parse(raw));
+  } catch {}
+  return DEFAULT_STATE; // IDB fallback runs in useEffect below
 }
 
+// ── Save: write to localStorage synchronously + IDB async ─
 function saveState(state) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const json = JSON.stringify(state);
+    localStorage.setItem(STORAGE_KEY, json);
+    // Async backup to IndexedDB — fire-and-forget, never blocks
+    idbSave(json);
   } catch {}
 }
 
@@ -85,10 +93,35 @@ export default function useGameState() {
   const [levelUpAnim, setLevelUpAnim] = useState(false);
   const [questCompleted, setQuestCompleted] = useState(null);
 
-  // Persist on every state change
+  // Persist on every state change (localStorage + IDB)
   useEffect(() => {
     saveState(state);
   }, [state]);
+
+  // ── IDB Fallback Recovery ──────────────────────────────
+  // If localStorage was cleared by iOS (7-day eviction), this
+  // runs once on mount, detects the empty localStorage, and
+  // restores the last known state from IndexedDB.
+  useEffect(() => {
+    const lsEmpty = !localStorage.getItem(STORAGE_KEY);
+    if (!lsEmpty) return; // localStorage is fine — nothing to do
+
+    idbLoad().then(json => {
+      if (!json) return; // No IDB backup either
+      try {
+        const saved = JSON.parse(json);
+        if (!saved?.player) return; // Not a valid save
+        const restored = mergeWithDefaults(saved);
+        setState(restored);
+        // Immediately write it back to localStorage so next
+        // sync reads are fast again
+        localStorage.setItem(STORAGE_KEY, json);
+        console.log('[LexRise] Progress restored from IndexedDB backup ✓');
+      } catch {
+        // Corrupt backup — ignore, user starts fresh
+      }
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check/reset daily quests
   useEffect(() => {

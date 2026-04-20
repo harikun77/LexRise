@@ -93,8 +93,24 @@ export default function ProgressView({ state, exportSave, importSave }) {
   const nextMilestone  = CLASS_MILESTONES.find(m => m.level > player.level);
   const levelsToNext   = nextMilestone ? nextMilestone.level - player.level : 0;
 
+  // ── Export reminder ──────────────────────────────────────
+  const lastExportDate = localStorage.getItem('lexrise_last_export');
+  const daysSinceExport = lastExportDate
+    ? Math.floor((Date.now() - new Date(lastExportDate).getTime()) / 86400000)
+    : null;
+  // Warn after 5 days, urgent after 10 days
+  const exportWarning = daysSinceExport === null
+    ? 'never'
+    : daysSinceExport >= 10 ? 'urgent'
+    : daysSinceExport >= 5  ? 'warn'
+    : null;
+
   const handleExport = () => {
     const result = exportSave();
+    if (result.ok) {
+      // Record export date for the reminder badge
+      localStorage.setItem('lexrise_last_export', new Date().toISOString().split('T')[0]);
+    }
     setSaveMsg(result.ok
       ? { type: 'success', text: '✅ Save file downloaded! Keep it somewhere safe.' }
       : { type: 'error',   text: `❌ Export failed: ${result.error}` }
@@ -197,17 +213,52 @@ export default function ProgressView({ state, exportSave, importSave }) {
 
       {/* ── Save Management ─────────────────────────────── */}
       <section>
-        <h2 className="font-bold text-white mb-3">💾 Save Management</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-bold text-white">💾 Save Management</h2>
+          {exportWarning && (
+            <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+              exportWarning === 'urgent' ? 'bg-red-900/60 text-red-300 border border-red-700/50 animate-pulse'
+              : exportWarning === 'warn'  ? 'bg-amber-900/60 text-amber-300 border border-amber-700/50'
+              : 'bg-gray-700 text-gray-400 border border-gray-600'
+            }`}>
+              {exportWarning === 'never'  ? '⚠️ Never exported'
+               : exportWarning === 'urgent' ? `🔴 ${daysSinceExport}d since export`
+               : `⚠️ ${daysSinceExport}d since export`}
+            </span>
+          )}
+        </div>
         <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 space-y-4">
 
-          {/* iOS warning */}
-          <div className="bg-amber-900/20 border border-amber-700/40 rounded-xl p-3">
-            <div className="text-xs font-bold text-amber-400 mb-1">⚠️ iOS Users — Important</div>
-            <div className="text-xs text-gray-400 leading-relaxed">
-              Safari on iPhone may clear app data if you haven't opened LexRise in <strong className="text-white">7 days</strong>.
-              Export your save regularly as a backup — especially before holidays or breaks.
+          {/* Dynamic iOS warning */}
+          {exportWarning ? (
+            <div className={`rounded-xl p-3 ${
+              exportWarning === 'urgent'
+                ? 'bg-red-900/30 border border-red-700/50'
+                : 'bg-amber-900/20 border border-amber-700/40'
+            }`}>
+              <div className={`text-xs font-bold mb-1 ${
+                exportWarning === 'urgent' ? 'text-red-400' : 'text-amber-400'
+              }`}>
+                {exportWarning === 'urgent' ? '🔴 Backup Overdue!' : exportWarning === 'never' ? '⚠️ No Backup Yet' : '⚠️ Backup Recommended'}
+              </div>
+              <div className="text-xs text-gray-300 leading-relaxed">
+                {exportWarning === 'never'
+                  ? 'You haven\'t exported your save yet. iOS Safari may clear app data after 7 days of inactivity. Export now to protect your progress.'
+                  : exportWarning === 'urgent'
+                  ? `It\'s been ${daysSinceExport} days since your last backup. Export your save now before iOS clears your data.`
+                  : `Last exported ${daysSinceExport} days ago. Consider downloading a fresh backup to stay safe.`
+                }
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-green-900/20 border border-green-700/40 rounded-xl p-3">
+              <div className="text-xs font-bold text-green-400 mb-1">✅ Backup Up-to-Date</div>
+              <div className="text-xs text-gray-400">
+                Last exported {daysSinceExport === 0 ? 'today' : `${daysSinceExport} day${daysSinceExport !== 1 ? 's' : ''} ago`}.
+                Your progress is backed up. Export again before any long break.
+              </div>
+            </div>
+          )}
 
           {/* Export */}
           <div>
