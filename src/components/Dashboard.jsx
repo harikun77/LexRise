@@ -207,6 +207,33 @@ export default function Dashboard({ state, xpPercent, xpToNextLevel, onNavigate,
         </section>
       )}
 
+      {/* Quick Actions — Shop + Inventory */}
+      <section>
+        <h2 className="font-bold text-white text-lg mb-3">⚔️ Dungeon Prep</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => onNavigate('shop')}
+            className="bg-gradient-to-br from-yellow-900/60 to-amber-900/40 border border-yellow-700/50 hover:border-yellow-500 rounded-xl p-4 text-left card-hover btn-press transition-all"
+          >
+            <div className="text-3xl mb-2">🏪</div>
+            <div className="font-bold text-white text-sm">Shop</div>
+            <div className="text-xs text-yellow-400">Buy weapons, armor, potions</div>
+            <div className="text-xs text-gray-500 mt-1">💎 {player.gems} gems</div>
+          </button>
+          <button
+            onClick={() => onNavigate('inventory')}
+            className="bg-gradient-to-br from-amber-900/60 to-orange-900/40 border border-amber-700/50 hover:border-amber-500 rounded-xl p-4 text-left card-hover btn-press transition-all"
+          >
+            <div className="text-3xl mb-2">🎒</div>
+            <div className="font-bold text-white text-sm">Inventory</div>
+            <div className="text-xs text-amber-400">Manage gear + use potions</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {state.inventory?.bag?.length ?? 0} items in bag
+            </div>
+          </button>
+        </div>
+      </section>
+
       {/* Skill branches */}
       <section>
         <h2 className="font-bold text-white text-lg mb-3">🗺️ Skill Branches</h2>

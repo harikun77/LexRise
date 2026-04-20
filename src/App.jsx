@@ -6,6 +6,8 @@ import VocabForge from './components/VocabForge';
 import GrammarDojo from './components/GrammarDojo';
 import ReadingCitadel from './components/ReadingCitadel';
 import BossBattle from './components/BossBattle';
+import Inventory from './components/Inventory';
+import Shop from './components/Shop';
 import ProgressView from './components/ProgressView';
 import { XPPopups, LevelUpModal, QuestCompleteModal, NameSetupModal } from './components/Overlays';
 import InstallBanner from './components/InstallBanner';
@@ -32,6 +34,15 @@ export default function App() {
     updateQuestProgress,
     xpToNextLevel,
     xpPercent,
+    // RPG
+    rpgStats,
+    equippedWeaponId,
+    equippedArmorId,
+    usePotion,
+    equipWeapon,
+    equipArmor,
+    buyItem,
+    sellItem,
   } = useGameState();
 
   // Show the level-up modal whenever the hook fires the level-up animation flag
@@ -96,6 +107,26 @@ export default function App() {
             recordWrong={recordWrong}
             updateQuestProgress={updateQuestProgress}
             onExit={() => { claimBossWeek(); setView('dashboard'); }}
+          />
+        )}
+        {view === 'inventory' && (
+          <Inventory
+            state={state}
+            rpgStats={rpgStats}
+            equippedWeaponId={equippedWeaponId}
+            equippedArmorId={equippedArmorId}
+            equipWeapon={equipWeapon}
+            equipArmor={equipArmor}
+            usePotion={usePotion}
+            sellItem={sellItem}
+          />
+        )}
+        {view === 'shop' && (
+          <Shop
+            state={state}
+            buyItem={buyItem}
+            equippedWeaponId={equippedWeaponId}
+            equippedArmorId={equippedArmorId}
           />
         )}
         {view === 'progress' && (
