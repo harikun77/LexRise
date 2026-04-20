@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- Primary -->
+    <title>LexRise — SAT English RPG</title>
+    <meta name="description" content="Gamified SAT English prep — Vocabulary, Grammar, and Reading Comprehension. Level up your skills daily." />
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Theme color (browser chrome + Android status bar) -->
+    <meta name="theme-color" content="#030712" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- ── iOS / Apple PWA ────────────────────────────────── -->
+    <!-- Makes it feel native when added to home screen -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="LexRise" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
+
+    <!-- ── Android / Chrome ──────────────────────────────── -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="LexRise" />
+
+    <!-- ── Open Graph (share previews) ───────────────────── -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="LexRise — SAT English RPG" />
+    <meta property="og:description" content="Gamified SAT prep — battle bosses, forge vocabulary, master grammar." />
+    <meta property="og:image" content="/icon-512.svg" />
+
+    <!-- Service Worker registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          // import.meta.env.BASE_URL is injected by Vite and equals
+          // '/' locally and '/repo-name/' on GitHub Pages.
+          navigator.serviceWorker.register(import.meta.env.BASE_URL + 'sw.js')
+            .catch(err => console.log('SW registration failed:', err));
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

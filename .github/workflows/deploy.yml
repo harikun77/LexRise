@@ -1,0 +1,73 @@
+# ============================================================
+# LexRise — Deploy to GitHub Pages
+# ============================================================
+#
+# Triggers on every push to `main`.
+# Builds the Vite app with the correct base path and pushes
+# the dist/ folder to the `gh-pages` branch.
+#
+# Your app will be live at:
+#   https://<your-github-username>.github.io/<repo-name>/
+#
+# One-time setup required (see README.md):
+#   1. Push this code to GitHub
+#   2. In repo Settings → Pages → Source: set to "gh-pages branch"
+#   3. In repo Settings → Actions → General:
+#      set "Workflow permissions" to "Read and write permissions"
+# ============================================================
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # Allow running manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions so the workflow can push to gh-pages
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Check out the code
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Set up Node.js (same major version as local dev)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Build — inject the repo name as the base path
+      #    github.event.repository.name gives us e.g. "lexrise"
+      #    so VITE_BASE_PATH becomes "/lexrise/"
+      - name: Build
+        run: npm run build
+        env:
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+
+      # 5. Write a .nojekyll file so GitHub Pages serves _assets correctly
+      - name: Add .nojekyll
+        run: touch dist/.nojekyll
+
+      # 6. Deploy dist/ → gh-pages branch
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          # Keep previous deployments' commit history clean
+          force_orphan: true
+          # Commit message shown in gh-pages branch
+          commit_message: "deploy: ${{ github.sha }}"
