@@ -237,53 +237,27 @@ export default function Dashboard({ state, xpPercent, xpToNextLevel, onNavigate,
         </div>
       </section>
 
-      {/* Skill branches */}
+      {/* Quick study shortcut */}
       <section>
-        <h2 className="font-bold text-white text-lg mb-3">🗺️ Skill Branches</h2>
-        <div className="space-y-3">
-          <SkillCard
-            name="Vocabulary Forge"
-            icon="📖"
-            skill={skills.vocabulary}
-            color="indigo"
-            onClick={() => onNavigate('vocab')}
-          />
-          <SkillCard
-            name="Grammar Dojo"
-            icon="✍️"
-            skill={skills.grammar}
-            color="purple"
-            onClick={() => onNavigate('grammar')}
-          />
-          {readingUnlocked ? (
-            <SkillCard
-              name="Reading Citadel"
-              icon="📜"
-              skill={skills.reading}
-              color="cyan"
-              onClick={() => onNavigate('reading')}
-            />
-          ) : (
-            <div className="bg-gray-800/40 border border-gray-700/50 rounded-xl p-4 opacity-60">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl">📜</span>
-                <div>
-                  <div className="font-bold text-white">Reading Citadel</div>
-                  <div className="text-xs text-amber-400">🔒 Unlocks at Vocabulary Level 5</div>
-                  <div className="text-xs text-gray-500 mt-0.5">Current: Vocab Level {vocabLevel}</div>
-                </div>
+        <h2 className="font-bold text-white text-lg mb-3">📚 Study Branches</h2>
+        <button
+          onClick={() => onNavigate('study')}
+          className="w-full bg-gradient-to-br from-indigo-950/80 to-gray-900 border border-indigo-700/60 hover:border-indigo-500 rounded-xl p-4 text-left card-hover btn-press transition-all"
+        >
+          <div className="flex items-center gap-4">
+            <div className="text-4xl">📖</div>
+            <div className="flex-1">
+              <div className="font-bold text-white text-base">Open Study Mode</div>
+              <div className="text-xs text-gray-400 mt-0.5">Vocab · Grammar · Reading</div>
+              <div className="flex gap-3 mt-2 text-xs">
+                <span className="text-indigo-400">Vocab Lv {skills.vocabulary.level}</span>
+                <span className="text-purple-400">Grammar Lv {skills.grammar.level}</span>
+                {readingUnlocked && <span className="text-cyan-400">Reading Lv {skills.reading.level}</span>}
               </div>
-              {/* Progress bar toward unlock */}
-              <div className="mt-3 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all"
-                  style={{ width: `${Math.min(100, (vocabLevel / 5) * 100)}%` }}
-                />
-              </div>
-              <div className="text-xs text-gray-600 mt-1">{vocabLevel}/5 Vocab levels</div>
             </div>
-          )}
-        </div>
+            <div className="text-indigo-400 font-bold text-lg">→</div>
+          </div>
+        </button>
       </section>
     </div>
   );

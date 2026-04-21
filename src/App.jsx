@@ -12,6 +12,8 @@ import Shop from './components/Shop';
 import ProgressView from './components/ProgressView';
 import { XPPopups, LevelUpModal, QuestCompleteModal, NameSetupModal } from './components/Overlays';
 import InstallBanner from './components/InstallBanner';
+import BottomNav from './components/BottomNav';
+import StudyHub from './components/StudyHub';
 import './index.css';
 
 export default function App() {
@@ -72,7 +74,8 @@ export default function App() {
         view={view}
       />
 
-      <main>
+      {/* Extra bottom padding so content never hides behind the fixed bottom nav */}
+      <main className="pb-24">
         {view === 'dashboard' && (
           <Dashboard
             state={state}
@@ -81,6 +84,9 @@ export default function App() {
             onNavigate={setView}
             bossAvailable={bossAvailableThisWeek}
           />
+        )}
+        {view === 'study' && (
+          <StudyHub state={state} onNavigate={setView} />
         )}
         {view === 'vocab' && (
           <VocabForge
@@ -183,6 +189,9 @@ export default function App() {
 
       {/* PWA install banner — shows on mobile when not yet installed */}
       <InstallBanner />
+
+      {/* Sticky bottom nav — always visible */}
+      <BottomNav view={view} onNavigate={setView} />
     </div>
   );
 }
