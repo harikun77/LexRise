@@ -55,10 +55,15 @@ function pickType(row, totalRows, rand) {
 }
 
 // ── Main generator ───────────────────────────────────────────
-export function generateMap(seed, rows = 15, cols = 7) {
-  const rand    = seededRng(seed);
-  const NUM_PATHS = 6;
-  const BOSS_COL  = Math.floor(cols / 2); // column 3
+/**
+ * numPaths: how many starting paths (3 for early dungeons → 7 for late)
+ * cols is derived: max(numPaths + 1, 5) capped at 7
+ */
+export function generateMap(seed, numPaths = 6, rows = 15) {
+  const rand     = seededRng(seed);
+  const cols     = Math.min(7, Math.max(numPaths + 1, 5));
+  const NUM_PATHS = numPaths;
+  const BOSS_COL  = Math.floor(cols / 2);
 
   // Pick 6 distinct sorted starting columns
   const all = Array.from({ length: cols }, (_, i) => i);
@@ -180,4 +185,16 @@ export function getNodeDifficulty(nodeType) {
 /** Generate a consistent but run-unique seed for a dungeon run */
 export function generateRunSeed() {
   return Math.floor(Math.random() * 1_000_000_000);
+}
+
+/**
+ * How many starting paths to use for a dungeon of a given order (1-based).
+ * Early dungeons = narrow map (3 paths); late/DLC = full-width (7 paths).
+ */
+export function getNumPaths(dungeonOrder) {
+  if (dungeonOrder <= 2)  return 3;
+  if (dungeonOrder <= 4)  return 4;
+  if (dungeonOrder <= 6)  return 5;
+  if (dungeonOrder <= 9)  return 6;
+  return 7;
 }

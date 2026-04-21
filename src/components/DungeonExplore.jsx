@@ -26,7 +26,7 @@ import {
 import { VOCAB_WORDS, GRAMMAR_CHALLENGES } from '../data/index';
 import { ALL_PASSAGES } from '../data/reading/index';
 import { POTIONS_MAP } from '../data/rpg/items';
-import { generateMap, getAvailableNodes, getNodeDifficulty, generateRunSeed, NODE_TYPES } from '../utils/mapGen';
+import { generateMap, getAvailableNodes, getNodeDifficulty, generateRunSeed, getNumPaths, NODE_TYPES } from '../utils/mapGen';
 import EnemySprite from './EnemySprite';
 import DungeonMap from './DungeonMap';
 
@@ -304,8 +304,9 @@ export default function DungeonExplore({
   const enterDungeon = useCallback((id) => {
     const d = getDungeon(id);
     if (!d) return;
-    const seed = generateRunSeed();
-    const map  = generateMap(seed);
+    const seed     = generateRunSeed();
+    const numPaths = getNumPaths(d.order ?? 1);
+    const map      = generateMap(seed, numPaths);
     poolRef.current = buildPool(d);
     usedRef.current = new Set();
     setActiveMap(map);
