@@ -62,7 +62,7 @@ export default function App() {
   const needsName = state.player.name === 'Scholar';
 
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className="bg-gray-950" style={{ minHeight: '100dvh' }}>
       {needsName && <NameSetupModal onSave={setPlayerName} />}
 
       <GameHeader

@@ -10,8 +10,11 @@ export default function GameHeader({ player, xpPercent, xpToNextLevel, onNavigat
                 :               'from-red-700 to-red-500';
 
   return (
-    <header className="sticky top-0 z-50 bg-gray-950/95 backdrop-blur border-b border-gray-800 px-4 py-3">
-      <div className="max-w-2xl mx-auto flex items-center gap-3">
+    <header
+      className="sticky top-0 z-50 bg-gray-950/95 backdrop-blur border-b border-gray-800"
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}
+    >
+      <div className="max-w-2xl mx-auto flex items-center gap-3 px-4 py-3">
         {/* Logo / home */}
         <button onClick={() => onNavigate('dashboard')} className="flex items-center gap-2 mr-1 flex-shrink-0">
           <span className="text-2xl">🏰</span>

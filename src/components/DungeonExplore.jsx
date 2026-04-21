@@ -471,7 +471,8 @@ export default function DungeonExplore({
   // ── MAP ───────────────────────────────────────────────────
   if (phase === 'map') {
     return (
-      <div className="max-w-2xl mx-auto flex flex-col animate-fade-in" style={{ height: 'calc(100vh - 130px)' }}>
+      <div className="max-w-2xl mx-auto flex flex-col animate-fade-in"
+           style={{ height: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 120px)' }}>
         <DungeonMap
           map={activeMap}
           visitedIds={visitedIds}

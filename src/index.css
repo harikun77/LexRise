@@ -7,9 +7,12 @@
     @apply bg-gray-950 text-white m-0;
     font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
+    /* Prevent rubber-band scroll from showing white edges on iOS */
+    overscroll-behavior: none;
   }
   #root {
-    @apply w-full min-h-screen;
+    @apply w-full;
+    min-height: 100dvh;
     text-align: left;
   }
 }
