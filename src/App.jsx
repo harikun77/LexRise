@@ -46,11 +46,10 @@ export default function App() {
     sellItem,
     healPlayer,
     takeDamage,
-    startDungeon,
-    recordFloorCleared,
-    defeatBoss,
-    retreatDungeon,
-    recordDungeonEncounter,
+    startDungeonRun,
+    completeDungeonNode,
+    finishDungeonRun,
+    abandonDungeonRun,
   } = useGameState();
 
   // Show the level-up modal whenever the hook fires the level-up animation flag
@@ -125,12 +124,12 @@ export default function App() {
             recordWrong={recordWrong}
             updateQuestProgress={updateQuestProgress}
             takeDamage={takeDamage}
+            healPlayer={healPlayer}
             usePotion={usePotion}
-            startDungeon={startDungeon}
-            recordFloorCleared={recordFloorCleared}
-            defeatBoss={defeatBoss}
-            retreatDungeon={retreatDungeon}
-            recordDungeonEncounter={recordDungeonEncounter}
+            startDungeonRun={startDungeonRun}
+            completeDungeonNode={completeDungeonNode}
+            finishDungeonRun={finishDungeonRun}
+            abandonDungeonRun={abandonDungeonRun}
             equippedWeaponId={equippedWeaponId}
             equippedArmorId={equippedArmorId}
             onBack={() => setView('dashboard')}

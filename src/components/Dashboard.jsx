@@ -139,8 +139,7 @@ function SkillCard({ name, icon, skill, color, onClick }) {
 }
 
 export default function Dashboard({ state, xpPercent, xpToNextLevel, onNavigate, bossAvailable }) {
-  const { player, skills, dailyQuests } = state;
-  const completedCount  = dailyQuests.filter(q => q.completed).length;
+  const { player, skills } = state;
   const vocabLevel      = skills.vocabulary.level;
   const readingUnlocked = vocabLevel >= 5;
   const boss            = getCurrentBoss(player.level);
@@ -148,22 +147,6 @@ export default function Dashboard({ state, xpPercent, xpToNextLevel, onNavigate,
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
       <HeroCard player={player} xpPercent={xpPercent} xpToNextLevel={xpToNextLevel} />
-
-      {/* Daily Quests */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-white text-lg">⚡ Daily Quests</h2>
-          <span className="text-sm text-gray-400">{completedCount}/{dailyQuests.length} complete</span>
-        </div>
-        {completedCount === dailyQuests.length && dailyQuests.length > 0 && (
-          <div className="bg-green-900/30 border border-green-600/50 rounded-xl p-3 mb-3 text-center text-green-300 text-sm font-semibold">
-            🎉 All quests completed! Come back tomorrow for more.
-          </div>
-        )}
-        <div className="space-y-3">
-          {dailyQuests.map(q => <QuestCard key={q.id} quest={q} />)}
-        </div>
-      </section>
 
       {/* Boss Battle — shows at level 5+ */}
       {boss && (

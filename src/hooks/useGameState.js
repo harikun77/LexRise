@@ -89,9 +89,12 @@ const DEFAULT_STATE = {
     dungeon_01: { bossDefeated: false, floorsCleared: 0, runCount: 0 },
   },
 
-  // Active dungeon run state (null when not inside a dungeon)
-  // Set by the Phaser dungeon game when a run begins
+  // Active dungeon run (null when not in a run)
   activeDungeon: null,
+
+  // Pre-run snapshot — restored on abandon (no-exit rule)
+  // Stores { player, rpg } at the moment the player confirmed entry
+  preDungeonSnapshot: null,
 };
 
 // ── Deep merge helper ────────────────────────────────────
@@ -120,7 +123,8 @@ function mergeWithDefaults(saved) {
       ...DEFAULT_STATE.dungeonProgress,
       ...(saved.dungeonProgress || {}),
     },
-    activeDungeon: saved.activeDungeon ?? null,
+    activeDungeon:       saved.activeDungeon       ?? null,
+    preDungeonSnapshot:  saved.preDungeonSnapshot  ?? null,
   };
 }
 
@@ -617,46 +621,47 @@ export default function useGameState() {
     });
   }, []);
 
-  // ── Dungeon Actions ─────────────────────────────────────
+  // ── Dungeon Run Actions (map-based system) ─────────────────
 
-  /** Start a dungeon run */
-  const startDungeon = useCallback((dungeonId) => {
+  /**
+   * Begin a dungeon run — saves a pre-run snapshot (for no-exit restore)
+   * and records the map seed.
+   */
+  const startDungeonRun = useCallback((dungeonId, mapSeed) => {
     setState(s => ({
       ...s,
-      activeDungeon: {
-        dungeonId,
-        currentFloor: 1,
-        encounterOnFloor: 1,
-        floorEncounterCounts: {},
-        startTime: Date.now(),
+      activeDungeon: { dungeonId, mapSeed, visitedNodes: [], startTime: Date.now() },
+      // Snapshot: restore point if player abandons
+      preDungeonSnapshot: {
+        player: { ...s.player },
+        rpg:    { ...s.rpg },
       },
     }));
   }, []);
 
-  /** Record floor cleared progress */
-  const recordFloorCleared = useCallback((dungeonId, floor) => {
-    setState(s => {
-      const prev = s.dungeonProgress?.[dungeonId] || { bossDefeated: false, floorsCleared: 0, runCount: 0 };
-      return {
-        ...s,
-        dungeonProgress: {
-          ...s.dungeonProgress,
-          [dungeonId]: { ...prev, floorsCleared: Math.max(prev.floorsCleared, floor) },
-        },
-        activeDungeon: s.activeDungeon
-          ? { ...s.activeDungeon, currentFloor: floor + 1, encounterOnFloor: 1 }
-          : s.activeDungeon,
-      };
-    });
+  /**
+   * Mark a node as visited in the active run.
+   */
+  const completeDungeonNode = useCallback((nodeId) => {
+    setState(s => ({
+      ...s,
+      activeDungeon: s.activeDungeon
+        ? { ...s.activeDungeon, visitedNodes: [...(s.activeDungeon.visitedNodes ?? []), nodeId] }
+        : s.activeDungeon,
+    }));
   }, []);
 
-  /** Record boss defeated — unlock next dungeon */
-  const defeatBoss = useCallback((dungeonId, bonusXP, bonusGems) => {
+  /**
+   * Finish a successful run — award completion XP/gems, mark boss defeated,
+   * unlock next dungeon, clear snapshot.
+   */
+  const finishDungeonRun = useCallback((dungeonId, bonusXP, bonusGems) => {
     setState(s => {
       const prev = s.dungeonProgress?.[dungeonId] || { bossDefeated: false, floorsCleared: 0, runCount: 0 };
-      const farmMult = getDungeonFarmMultiplier(dungeonId, s.dungeonProgress);
+      const farmMult  = getDungeonFarmMultiplier(dungeonId, s.dungeonProgress);
       const finalXP   = Math.floor((bonusXP   ?? 0) * farmMult);
       const finalGems = Math.floor((bonusGems ?? 0) * farmMult);
+      // Level up check after XP award (simple version — awardXP handles levels normally)
       return {
         ...s,
         player: {
@@ -666,44 +671,31 @@ export default function useGameState() {
         },
         dungeonProgress: {
           ...s.dungeonProgress,
-          [dungeonId]: {
-            ...prev,
-            bossDefeated: true,
-            runCount: prev.runCount + 1,
-          },
+          [dungeonId]: { ...prev, bossDefeated: true, runCount: prev.runCount + 1 },
         },
-        activeDungeon: null,  // run complete
+        activeDungeon:      null,
+        preDungeonSnapshot: null,
       };
     });
   }, []);
 
-  /** Exit dungeon without completing (retreat) */
-  const retreatDungeon = useCallback(() => {
-    setState(s => ({ ...s, activeDungeon: null }));
-  }, []);
-
-  /** Record an encounter in the active dungeon for per-floor XP tracking */
-  const recordDungeonEncounter = useCallback((dungeonId, floor) => {
+  /**
+   * Abandon a run mid-way — restores pre-run snapshot (no-exit rule).
+   * Player loses all XP/gems earned during the run.
+   */
+  const abandonDungeonRun = useCallback(() => {
     setState(s => {
-      const counts = { ...(s.activeDungeon?.floorEncounterCounts ?? {}) };
-      counts[floor] = (counts[floor] ?? 0) + 1;
+      if (!s.preDungeonSnapshot) return { ...s, activeDungeon: null };
+      const snap = s.preDungeonSnapshot;
       return {
         ...s,
-        activeDungeon: s.activeDungeon
-          ? { ...s.activeDungeon, floorEncounterCounts: counts,
-              encounterOnFloor: (s.activeDungeon.encounterOnFloor ?? 1) + 1 }
-          : s.activeDungeon,
+        player:             { ...s.player, ...snap.player },
+        rpg:                { ...s.rpg,    ...snap.rpg    },
+        activeDungeon:      null,
+        preDungeonSnapshot: null,
       };
     });
   }, []);
-
-  /** Get XP multiplier for an encounter in the active dungeon */
-  const getDungeonEncounterXPMult = useCallback((dungeonId, floor) => {
-    const floorCount  = state.activeDungeon?.floorEncounterCounts?.[floor] ?? 0;
-    const dungeonMult = getDungeonFarmMultiplier(dungeonId, state.dungeonProgress);
-    const floorMult   = getXPMultiplier(floorCount);
-    return floorMult * dungeonMult;
-  }, [state.activeDungeon, state.dungeonProgress]);
 
   return {
     state,
@@ -750,12 +742,10 @@ export default function useGameState() {
     getFloorXPMultiplier,
     updateFloor,
     upgradeRPGStats,
-    // ── Dungeon ──────────────────────────────────────────────
-    startDungeon,
-    recordFloorCleared,
-    defeatBoss,
-    retreatDungeon,
-    recordDungeonEncounter,
-    getDungeonEncounterXPMult,
+    // ── Dungeon (map-based run system) ───────────────────────
+    startDungeonRun,
+    completeDungeonNode,
+    finishDungeonRun,
+    abandonDungeonRun,
   };
 }
