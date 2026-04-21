@@ -31,20 +31,20 @@ function colX(col, lyt) { return lyt.colOffset + col * lyt.colStep; }
 function rowY(row, totalRows) { return ROW_OFFSET + (totalRows - 1 - row) * ROW_STEP; }
 function svgH(rows) { return ROW_OFFSET + (rows - 1) * ROW_STEP + ROW_OFFSET; }
 
-// ── Node colours ─────────────────────────────────────────────
+// ── Node colours (parchment theme — light background) ────────
 const TYPE_FILL = {
-  monster: '#1c1917',  // warm dark
-  elite:   '#1e1b2e',  // deep purple
-  boss:    '#1c1200',  // dark gold
-  scroll:  '#0c1a1e',  // dark cyan
-  camp:    '#0d1a0d',  // dark green
+  monster: '#dc2626',  // vivid red
+  elite:   '#7c3aed',  // vivid purple
+  boss:    '#d97706',  // vivid amber/gold
+  scroll:  '#0891b2',  // vivid cyan
+  camp:    '#16a34a',  // vivid green
 };
 const TYPE_STROKE = {
-  monster: '#ef4444',
-  elite:   '#a855f7',
-  boss:    '#f59e0b',
-  scroll:  '#06b6d4',
-  camp:    '#22c55e',
+  monster: '#7f1d1d',  // dark red border
+  elite:   '#3b0764',  // dark purple border
+  boss:    '#78350f',  // dark amber border
+  scroll:  '#164e63',  // dark cyan border
+  camp:    '#14532d',  // dark green border
 };
 
 function nodeVisuals(type, state) {
@@ -58,9 +58,9 @@ function nodeVisuals(type, state) {
     case 'available':
       return { fill, stroke, icon, opacity: 1,    strokeW: 2.5, dim: false };
     case 'visited':
-      return { fill: '#1f2937', stroke: '#374151', icon: '✓', opacity: 0.7, strokeW: 1.5, dim: true };
+      return { fill: '#b8a878', stroke: '#7a5c20', icon: '✓', opacity: 0.85, strokeW: 1.5, dim: true };
     default: // locked
-      return { fill: '#0a0a0a', stroke: '#1f2937', icon: '🔒', opacity: 0.35, strokeW: 1,   dim: true };
+      return { fill: '#d4c9a8', stroke: '#a89870', icon: '🔒', opacity: 0.45, strokeW: 1,   dim: true };
   }
 }
 
@@ -139,11 +139,11 @@ export default function DungeonMap({
         <path
           key={`ln-${node.id}-${childId}`}
           d={curvePath(x, y, cx, cy)}
-          stroke={avail ? TYPE_STROKE[child.type] ?? '#555' : onPath ? '#4b5563' : '#1f2937'}
-          strokeWidth={avail ? 2 : onPath ? 1.5 : 1}
+          stroke={avail ? TYPE_FILL[child.type] ?? '#6b4c11' : onPath ? '#6b4c11' : '#c4b48a'}
+          strokeWidth={avail ? 2.5 : onPath ? 2 : 1.2}
           strokeDasharray={avail ? 'none' : undefined}
           fill="none"
-          opacity={avail ? 0.8 : 1}
+          opacity={avail ? 0.9 : 1}
         />
       );
     });
@@ -159,11 +159,11 @@ export default function DungeonMap({
         {/* Outer glow ring for available / current */}
         {(isAvail || isCurrent) && (
           <circle cx={x} cy={y} r={r + 8} fill="none"
-            stroke={TYPE_STROKE[node.type] ?? '#555'} strokeWidth={1.5} opacity={0.3}>
+            stroke={TYPE_FILL[node.type] ?? '#6b4c11'} strokeWidth={2} opacity={0.4}>
             {isCurrent && (
               <>
                 <animate attributeName="r" values={`${r+5};${r+12};${r+5}`} dur="2s" repeatCount="indefinite" />
-                <animate attributeName="opacity" values="0.4;0.1;0.4" dur="2s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.5;0.15;0.5" dur="2s" repeatCount="indefinite" />
               </>
             )}
           </circle>
@@ -183,6 +183,7 @@ export default function DungeonMap({
           textAnchor="middle"
           dominantBaseline="middle"
           fontSize={isBoss ? 20 : 16}
+          fill={st === 'visited' ? '#fff' : st === 'locked' ? '#7a6030' : undefined}
           style={{ userSelect: 'none', pointerEvents: 'none' }}
         >
           {vis.icon}
@@ -195,8 +196,8 @@ export default function DungeonMap({
             textAnchor="middle"
             dominantBaseline="middle"
             fontSize={9}
-            fontWeight="600"
-            fill={TYPE_STROKE[node.type] ?? '#aaa'}
+            fontWeight="700"
+            fill={TYPE_STROKE[node.type] ?? '#4a3000'}
             style={{ userSelect: 'none', pointerEvents: 'none' }}
           >
             {NODE_TYPES[node.type]?.label ?? ''}
@@ -206,7 +207,7 @@ export default function DungeonMap({
         {/* BOSS label above */}
         {isBoss && (
           <text x={x} y={y - r - 10} textAnchor="middle" dominantBaseline="middle"
-            fontSize={10} fontWeight="bold" fill="#f59e0b"
+            fontSize={10} fontWeight="bold" fill="#78350f"
             style={{ userSelect: 'none', pointerEvents: 'none' }}>
             BOSS
           </text>
@@ -225,7 +226,7 @@ export default function DungeonMap({
       <text key={`fl-${r}`}
         x={lyt.svgW - 6} y={y + 1}
         textAnchor="end" dominantBaseline="middle"
-        fontSize={8} fill={isBossRow ? '#f59e0b' : isStart ? '#6b7280' : '#374151'}
+        fontSize={8} fill={isBossRow ? '#78350f' : isStart ? '#7c6a3a' : '#a89060'}
         style={{ userSelect: 'none' }}>
         {isBossRow ? 'BOSS' : isStart ? 'START' : `F${r + 1}`}
       </text>
@@ -282,7 +283,18 @@ export default function DungeonMap({
             viewBox={`0 0 ${lyt.svgW} ${height}`}
             style={{ display: 'block', touchAction: 'pan-y' }}
           >
-            <rect width={lyt.svgW} height={height} fill="#030712" />
+            {/* Parchment / aged paper background */}
+            <defs>
+              <linearGradient id="parchment" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%"   stopColor="#fdf6e3" />
+                <stop offset="50%"  stopColor="#f5edd6" />
+                <stop offset="100%" stopColor="#ede0c0" />
+              </linearGradient>
+            </defs>
+            <rect width={lyt.svgW} height={height} fill="url(#parchment)" />
+            {/* subtle grain overlay lines */}
+            <rect width={lyt.svgW} height={height} fill="none"
+              stroke="#c4a96030" strokeWidth="0" opacity="0.15" />
             {floorLabels}
             {lines}
             {nodeEls}

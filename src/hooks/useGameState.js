@@ -60,10 +60,10 @@ const DEFAULT_STATE = {
   // ── RPG Stats ───────────────────────────────────────────
   rpg: {
     // Combat stats (recalculated from level + gear)
-    hp:          100,   // current HP
-    maxHp:       100,   // base max HP (grows with level)
-    baseAttack:  5,     // base attack (grows with level)
-    baseDefense: 2,     // base defense (grows with level)
+    hp:          12,    // current HP
+    maxHp:       12,    // base max HP (grows with level)
+    baseAttack:  3,     // base attack (grows with level)
+    baseDefense: 0,     // base defense (grows with level)
     // Dungeon progress
     currentFloor:  1,
     deepestFloor:  1,
@@ -401,11 +401,11 @@ export default function useGameState() {
   // ── RPG Computed Values ──────────────────────────────────
   const equippedWeaponId = state.inventory?.weaponId || STARTER_WEAPON?.id;
   const equippedArmorId  = state.inventory?.armorId  || STARTER_ARMOR?.id;
-  const totalAttack  = getTotalAttack(state.rpg?.baseAttack  ?? 5, equippedWeaponId)
+  const totalAttack  = getTotalAttack(state.rpg?.baseAttack  ?? 3, equippedWeaponId)
                      + getAttackBonusFromArmor(equippedArmorId);
-  const totalDefense = getTotalDefense(state.rpg?.baseDefense ?? 2, equippedArmorId);
+  const totalDefense = getTotalDefense(state.rpg?.baseDefense ?? 0, equippedArmorId);
   const hpBonus      = getHPBonusFromArmor(equippedArmorId);
-  const effectiveMaxHp = (state.rpg?.maxHp ?? 100) + hpBonus;
+  const effectiveMaxHp = (state.rpg?.maxHp ?? 12) + hpBonus;
 
   // ── RPG Actions ──────────────────────────────────────────
 
@@ -415,7 +415,7 @@ export default function useGameState() {
       ...s,
       rpg: {
         ...s.rpg,
-        hp: Math.min(effectiveMaxHp, (s.rpg?.hp ?? 100) + amount),
+        hp: Math.min(effectiveMaxHp, (s.rpg?.hp ?? 12) + amount),
       },
     }));
   }, [effectiveMaxHp]);
@@ -424,10 +424,10 @@ export default function useGameState() {
   const takeDamage = useCallback((rawDamage) => {
     setState(s => {
       const armor = s.inventory?.armorId || STARTER_ARMOR?.id;
-      const defense = getTotalDefense(s.rpg?.baseDefense ?? 2, armor)
+      const defense = getTotalDefense(s.rpg?.baseDefense ?? 0, armor)
                     + getAttackBonusFromArmor(armor); // defensive bonus
       const damage = Math.max(1, rawDamage - defense);
-      const currentHp = s.rpg?.hp ?? 100;
+      const currentHp = s.rpg?.hp ?? 12;
       let newHp = currentHp - damage;
 
       // Phoenix Guard: revive once when HP hits 0
@@ -461,8 +461,8 @@ export default function useGameState() {
       const potion = POTIONS_MAP[potionId];
       if (!potion) return s;
       const armorId = s.inventory?.armorId || STARTER_ARMOR?.id;
-      const maxHp   = (s.rpg?.maxHp ?? 100) + getHPBonusFromArmor(armorId);
-      const newHp   = applyPotion(potion, s.rpg?.hp ?? 100, maxHp);
+      const maxHp   = (s.rpg?.maxHp ?? 12) + getHPBonusFromArmor(armorId);
+      const newHp   = applyPotion(potion, s.rpg?.hp ?? 12, maxHp);
       return {
         ...s,
         rpg: { ...s.rpg, hp: newHp },
@@ -605,15 +605,15 @@ export default function useGameState() {
   /** Level up RPG stats (called from awardXP level-up) */
   const upgradeRPGStats = useCallback((newLevel) => {
     setState(s => {
-      const baseMaxHp    = 100 + (newLevel - 1) * 10;
-      const baseAttack   = 5   + Math.floor((newLevel - 1) * 1.5);
-      const baseDefense  = 2   + Math.floor((newLevel - 1) * 0.8);
+      const baseMaxHp    = 12 + (newLevel - 1) * 8;
+      const baseAttack   = 3  + (newLevel - 1) * 2;
+      const baseDefense  = Math.floor((newLevel - 1) * 1);
       return {
         ...s,
         rpg: {
           ...s.rpg,
           maxHp:       baseMaxHp,
-          hp:          Math.min(s.rpg?.hp ?? 100, baseMaxHp),
+          hp:          Math.min(s.rpg?.hp ?? 12, baseMaxHp),
           baseAttack,
           baseDefense,
         },
@@ -717,10 +717,10 @@ export default function useGameState() {
     getPlayerClass,
     // ── RPG ─────────────────────────────────────────────────
     rpgStats: {
-      hp:          state.rpg?.hp ?? 100,
+      hp:          state.rpg?.hp ?? 12,
       maxHp:       effectiveMaxHp,
-      baseAttack:  state.rpg?.baseAttack  ?? 5,
-      baseDefense: state.rpg?.baseDefense ?? 2,
+      baseAttack:  state.rpg?.baseAttack  ?? 3,
+      baseDefense: state.rpg?.baseDefense ?? 0,
       totalAttack,
       totalDefense,
       currentFloor: state.rpg?.currentFloor  ?? 1,
