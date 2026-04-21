@@ -71,6 +71,7 @@ export default function GameHeader({ player, xpPercent, xpToNextLevel, onNavigat
           { id: 'vocab',      label: '📖'     },
           { id: 'grammar',    label: '✍️'     },
           ...(readingUnlocked ? [{ id: 'reading', label: '📜' }] : []),
+          { id: 'dungeon',    label: '⚔️'     },
           { id: 'inventory',  label: '🎒'     },
           { id: 'shop',       label: '🏪'     },
           { id: 'progress',   label: '🗺️'     },

@@ -6,6 +6,7 @@ import VocabForge from './components/VocabForge';
 import GrammarDojo from './components/GrammarDojo';
 import ReadingCitadel from './components/ReadingCitadel';
 import BossBattle from './components/BossBattle';
+import DungeonExplore from './components/DungeonExplore';
 import Inventory from './components/Inventory';
 import Shop from './components/Shop';
 import ProgressView from './components/ProgressView';
@@ -43,6 +44,13 @@ export default function App() {
     equipArmor,
     buyItem,
     sellItem,
+    healPlayer,
+    takeDamage,
+    startDungeon,
+    recordFloorCleared,
+    defeatBoss,
+    retreatDungeon,
+    recordDungeonEncounter,
   } = useGameState();
 
   // Show the level-up modal whenever the hook fires the level-up animation flag
@@ -107,6 +115,25 @@ export default function App() {
             recordWrong={recordWrong}
             updateQuestProgress={updateQuestProgress}
             onExit={() => { claimBossWeek(); setView('dashboard'); }}
+          />
+        )}
+        {view === 'dungeon' && (
+          <DungeonExplore
+            state={state}
+            rpgStats={rpgStats}
+            awardXP={awardXP}
+            recordWrong={recordWrong}
+            updateQuestProgress={updateQuestProgress}
+            takeDamage={takeDamage}
+            usePotion={usePotion}
+            startDungeon={startDungeon}
+            recordFloorCleared={recordFloorCleared}
+            defeatBoss={defeatBoss}
+            retreatDungeon={retreatDungeon}
+            recordDungeonEncounter={recordDungeonEncounter}
+            equippedWeaponId={equippedWeaponId}
+            equippedArmorId={equippedArmorId}
+            onBack={() => setView('dashboard')}
           />
         )}
         {view === 'inventory' && (

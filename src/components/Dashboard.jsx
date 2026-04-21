@@ -207,6 +207,26 @@ export default function Dashboard({ state, xpPercent, xpToNextLevel, onNavigate,
         </section>
       )}
 
+      {/* Dungeon Entry */}
+      <section>
+        <h2 className="font-bold text-white text-lg mb-3">⚔️ Dungeons</h2>
+        <button
+          onClick={() => onNavigate('dungeon')}
+          className="w-full bg-gradient-to-br from-indigo-950/80 to-gray-900 border border-indigo-700/60 hover:border-indigo-500 rounded-xl p-4 text-left card-hover btn-press transition-all"
+          style={{ boxShadow: '0 0 20px rgba(99,102,241,0.1)' }}
+        >
+          <div className="flex items-center gap-4">
+            <div className="text-4xl animate-float">🏰</div>
+            <div className="flex-1">
+              <div className="font-bold text-white text-base">Enter Dungeon</div>
+              <div className="text-xs text-gray-400 mt-0.5">Battle enemies, earn XP & gems</div>
+              <div className="text-xs text-indigo-400 mt-1">Answer questions → attack enemies</div>
+            </div>
+            <div className="text-indigo-400 font-bold text-lg">→</div>
+          </div>
+        </button>
+      </section>
+
       {/* Quick Actions — Shop + Inventory */}
       <section>
         <h2 className="font-bold text-white text-lg mb-3">⚔️ Dungeon Prep</h2>

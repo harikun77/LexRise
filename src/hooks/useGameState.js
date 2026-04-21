@@ -9,6 +9,7 @@ import {
   hasSpecialEffect, getSellPrice, ALL_ITEMS_MAP, POTIONS_MAP,
 } from '../data/rpg/items';
 import { getXPMultiplier } from '../data/rpg/enemies';
+import { getDungeonFarmMultiplier } from '../data/rpg/dungeons';
 
 const STORAGE_KEY = 'lexrise_save';
 
@@ -81,6 +82,16 @@ const DEFAULT_STATE = {
     // General bag: array of { itemId, quantity }
     bag: [],
   },
+
+  // ── Dungeon Progress ─────────────────────────────────────
+  // { [dungeonId]: { bossDefeated, floorsCleared, runCount } }
+  dungeonProgress: {
+    dungeon_01: { bossDefeated: false, floorsCleared: 0, runCount: 0 },
+  },
+
+  // Active dungeon run state (null when not inside a dungeon)
+  // Set by the Phaser dungeon game when a run begins
+  activeDungeon: null,
 };
 
 // ── Deep merge helper ────────────────────────────────────
@@ -104,6 +115,12 @@ function mergeWithDefaults(saved) {
       potions: { ...(saved.inventory?.potions || {}) },
       bag:     Array.isArray(saved.inventory?.bag) ? [...saved.inventory.bag] : [],
     },
+    // Deep merge dungeon progress — merge each dungeon's record individually
+    dungeonProgress: {
+      ...DEFAULT_STATE.dungeonProgress,
+      ...(saved.dungeonProgress || {}),
+    },
+    activeDungeon: saved.activeDungeon ?? null,
   };
 }
 
@@ -584,7 +601,7 @@ export default function useGameState() {
   /** Level up RPG stats (called from awardXP level-up) */
   const upgradeRPGStats = useCallback((newLevel) => {
     setState(s => {
-      const baseMaxHp    = 100 + (newLevel - 1) * 10;  // +10 HP per level
+      const baseMaxHp    = 100 + (newLevel - 1) * 10;
       const baseAttack   = 5   + Math.floor((newLevel - 1) * 1.5);
       const baseDefense  = 2   + Math.floor((newLevel - 1) * 0.8);
       return {
@@ -592,13 +609,101 @@ export default function useGameState() {
         rpg: {
           ...s.rpg,
           maxHp:       baseMaxHp,
-          hp:          Math.min(s.rpg?.hp ?? 100, baseMaxHp), // don't exceed new max
+          hp:          Math.min(s.rpg?.hp ?? 100, baseMaxHp),
           baseAttack,
           baseDefense,
         },
       };
     });
   }, []);
+
+  // ── Dungeon Actions ─────────────────────────────────────
+
+  /** Start a dungeon run */
+  const startDungeon = useCallback((dungeonId) => {
+    setState(s => ({
+      ...s,
+      activeDungeon: {
+        dungeonId,
+        currentFloor: 1,
+        encounterOnFloor: 1,
+        floorEncounterCounts: {},
+        startTime: Date.now(),
+      },
+    }));
+  }, []);
+
+  /** Record floor cleared progress */
+  const recordFloorCleared = useCallback((dungeonId, floor) => {
+    setState(s => {
+      const prev = s.dungeonProgress?.[dungeonId] || { bossDefeated: false, floorsCleared: 0, runCount: 0 };
+      return {
+        ...s,
+        dungeonProgress: {
+          ...s.dungeonProgress,
+          [dungeonId]: { ...prev, floorsCleared: Math.max(prev.floorsCleared, floor) },
+        },
+        activeDungeon: s.activeDungeon
+          ? { ...s.activeDungeon, currentFloor: floor + 1, encounterOnFloor: 1 }
+          : s.activeDungeon,
+      };
+    });
+  }, []);
+
+  /** Record boss defeated — unlock next dungeon */
+  const defeatBoss = useCallback((dungeonId, bonusXP, bonusGems) => {
+    setState(s => {
+      const prev = s.dungeonProgress?.[dungeonId] || { bossDefeated: false, floorsCleared: 0, runCount: 0 };
+      const farmMult = getDungeonFarmMultiplier(dungeonId, s.dungeonProgress);
+      const finalXP   = Math.floor((bonusXP   ?? 0) * farmMult);
+      const finalGems = Math.floor((bonusGems ?? 0) * farmMult);
+      return {
+        ...s,
+        player: {
+          ...s.player,
+          xp:   s.player.xp   + finalXP,
+          gems: s.player.gems + finalGems,
+        },
+        dungeonProgress: {
+          ...s.dungeonProgress,
+          [dungeonId]: {
+            ...prev,
+            bossDefeated: true,
+            runCount: prev.runCount + 1,
+          },
+        },
+        activeDungeon: null,  // run complete
+      };
+    });
+  }, []);
+
+  /** Exit dungeon without completing (retreat) */
+  const retreatDungeon = useCallback(() => {
+    setState(s => ({ ...s, activeDungeon: null }));
+  }, []);
+
+  /** Record an encounter in the active dungeon for per-floor XP tracking */
+  const recordDungeonEncounter = useCallback((dungeonId, floor) => {
+    setState(s => {
+      const counts = { ...(s.activeDungeon?.floorEncounterCounts ?? {}) };
+      counts[floor] = (counts[floor] ?? 0) + 1;
+      return {
+        ...s,
+        activeDungeon: s.activeDungeon
+          ? { ...s.activeDungeon, floorEncounterCounts: counts,
+              encounterOnFloor: (s.activeDungeon.encounterOnFloor ?? 1) + 1 }
+          : s.activeDungeon,
+      };
+    });
+  }, []);
+
+  /** Get XP multiplier for an encounter in the active dungeon */
+  const getDungeonEncounterXPMult = useCallback((dungeonId, floor) => {
+    const floorCount  = state.activeDungeon?.floorEncounterCounts?.[floor] ?? 0;
+    const dungeonMult = getDungeonFarmMultiplier(dungeonId, state.dungeonProgress);
+    const floorMult   = getXPMultiplier(floorCount);
+    return floorMult * dungeonMult;
+  }, [state.activeDungeon, state.dungeonProgress]);
 
   return {
     state,
@@ -645,5 +750,12 @@ export default function useGameState() {
     getFloorXPMultiplier,
     updateFloor,
     upgradeRPGStats,
+    // ── Dungeon ──────────────────────────────────────────────
+    startDungeon,
+    recordFloorCleared,
+    defeatBoss,
+    retreatDungeon,
+    recordDungeonEncounter,
+    getDungeonEncounterXPMult,
   };
 }
