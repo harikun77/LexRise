@@ -10,7 +10,7 @@ import DungeonExplore from './components/DungeonExplore';
 import Inventory from './components/Inventory';
 import Shop from './components/Shop';
 import ProgressView from './components/ProgressView';
-import { XPPopups, LevelUpModal, QuestCompleteModal, NameSetupModal } from './components/Overlays';
+import { XPPopups, LevelUpModal, NameSetupModal } from './components/Overlays';
 import InstallBanner from './components/InstallBanner';
 import BottomNav from './components/BottomNav';
 import StudyHub from './components/StudyHub';
@@ -25,7 +25,6 @@ export default function App() {
     xpPopups,
     levelUpAnim,
     questCompleted,
-    setQuestCompleted,
     setPlayerName,
     updateVocabSM2,
     bossAvailableThisWeek,
@@ -177,13 +176,6 @@ export default function App() {
         <LevelUpModal
           level={state.player.level}
           onClose={() => setShowLevelUp(false)}
-        />
-      )}
-
-      {questCompleted && (
-        <QuestCompleteModal
-          quest={questCompleted}
-          onClose={() => setQuestCompleted(null)}
         />
       )}
 

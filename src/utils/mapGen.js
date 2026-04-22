@@ -43,10 +43,18 @@ export { NODE_TYPES };
 
 function pickType(row, totalRows, rand) {
   if (row === totalRows - 1) return 'boss';
-  if (row === 4 || row === 9)  return 'camp';           // fixed rest sites
-  if (row <= 1)                return 'monster';        // intro rows
-  if (row >= totalRows - 3)    return rand() < 0.75 ? 'elite' : 'monster';
-  if (row >= totalRows - 7) {
+
+  // Rest sites at ~35% and ~65% through the dungeon (scales with map length)
+  const camp1 = Math.round(totalRows * 0.35);
+  const camp2 = Math.round(totalRows * 0.65);
+  if (row === camp1) return 'camp';
+  if (totalRows >= 10 && row === camp2) return 'camp';
+
+  if (row <= 1) return 'monster';   // intro rows
+
+  const progress = row / (totalRows - 1);   // 0 → 1
+  if (progress >= 0.80) return rand() < 0.75 ? 'elite' : 'monster';
+  if (progress >= 0.50) {
     const r = rand();
     return r < 0.40 ? 'monster' : r < 0.75 ? 'elite' : 'scroll';
   }
@@ -197,4 +205,17 @@ export function getNumPaths(dungeonOrder) {
   if (dungeonOrder <= 6)  return 5;
   if (dungeonOrder <= 9)  return 6;
   return 7;
+}
+
+/**
+ * How many rows (floors) in a dungeon based on its order.
+ * Early dungeons are short (7 rows = 6 floors + boss).
+ * Later dungeons grow to the full 15 rows.
+ */
+export function getNumRows(dungeonOrder) {
+  if (dungeonOrder <= 2)  return 7;
+  if (dungeonOrder <= 4)  return 9;
+  if (dungeonOrder <= 6)  return 11;
+  if (dungeonOrder <= 9)  return 13;
+  return 15;
 }

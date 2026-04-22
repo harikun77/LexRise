@@ -1,73 +1,120 @@
 // ============================================================
-// DungeonMap — Procedural path map visual
+// DungeonMap — Retro pixel RPG map (dark forest style)
 //
-// UX design:
-//   • Only 5 rows are visible at a time — scroll to see the rest
-//   • Auto-scrolls to the player's current node
-//   • Node columns scale with dungeon difficulty (3 → 7 paths)
-//   • Large emoji icons clearly visible inside each node circle
-//   • Boss at top (row 14), start at bottom (row 0)
+// Visual design inspired by classic RPG node maps:
+//   • Dark forest/dungeon background with pixel-art trees
+//   • Square icon nodes with thick coloured borders
+//   • White connecting lines
+//   • Bold labels below each node
+//   • Pulsing glow on current / available nodes
 // ============================================================
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { NODE_TYPES } from '../utils/mapGen';
 
-// ── Layout ───────────────────────────────────────────────────
-const ROW_STEP   = 72;   // px between row centres (tall enough for clear icons)
-const ROW_OFFSET = 40;   // top padding inside SVG
-const NODE_R     = 24;   // regular node radius
-const BOSS_R     = 30;   // boss node radius
-const VISIBLE_ROWS = 5;  // how many rows fit in the viewport
+// ── Spacing ───────────────────────────────────────────────────
+const ROW_STEP   = 110;
+const ROW_OFFSET = 56;
 
-// SVG width is fixed; column positions are computed from the map's col count
-function layout(cols) {
-  const svgW    = Math.min(360, cols * 52 + 20);
-  const colStep = (svgW - 24) / cols;
-  const colOffset = colStep / 2 + 12;            // centres col 0
-  return { svgW, colStep, colOffset };
+// ── Layout ────────────────────────────────────────────────────
+function layout(cols, screenW) {
+  const svgW    = Math.max(screenW, cols * 64);
+  const colStep = (svgW - 40) / cols;
+  const colOff  = 20 + colStep / 2;
+  return { svgW, colStep, colOff };
 }
 
-function colX(col, lyt) { return lyt.colOffset + col * lyt.colStep; }
+function colX(col, lyt)       { return lyt.colOff + col * lyt.colStep; }
 function rowY(row, totalRows) { return ROW_OFFSET + (totalRows - 1 - row) * ROW_STEP; }
-function svgH(rows) { return ROW_OFFSET + (rows - 1) * ROW_STEP + ROW_OFFSET; }
+function svgH(rows)           { return ROW_OFFSET * 2 + (rows - 1) * ROW_STEP; }
 
-// ── Node colours (parchment theme — light background) ────────
-const TYPE_FILL = {
-  monster: '#dc2626',  // vivid red
-  elite:   '#7c3aed',  // vivid purple
-  boss:    '#d97706',  // vivid amber/gold
-  scroll:  '#0891b2',  // vivid cyan
-  camp:    '#16a34a',  // vivid green
+// ── Node palettes (pixel-game vivid colours) ──────────────────
+const NODE_BG = {
+  monster: '#7f1d1d',   // deep red
+  elite:   '#3b0764',   // deep purple
+  boss:    '#78350f',   // deep gold
+  scroll:  '#164e63',   // deep cyan
+  camp:    '#14532d',   // deep green
 };
-const TYPE_STROKE = {
-  monster: '#7f1d1d',  // dark red border
-  elite:   '#3b0764',  // dark purple border
-  boss:    '#78350f',  // dark amber border
-  scroll:  '#164e63',  // dark cyan border
-  camp:    '#14532d',  // dark green border
+const NODE_BORDER = {
+  monster: '#ef4444',
+  elite:   '#a855f7',
+  boss:    '#fbbf24',
+  scroll:  '#22d3ee',
+  camp:    '#4ade80',
+};
+const NODE_ICON_BG = {
+  monster: '#dc2626',
+  elite:   '#7c3aed',
+  boss:    '#d97706',
+  scroll:  '#0891b2',
+  camp:    '#16a34a',
 };
 
-function nodeVisuals(type, state) {
-  const fill   = TYPE_FILL[type]   ?? '#111';
-  const stroke = TYPE_STROKE[type] ?? '#555';
-  const icon   = NODE_TYPES[type]?.icon ?? '❓';
-
-  switch (state) {
-    case 'current':
-      return { fill, stroke, icon, opacity: 1,    strokeW: 3,   dim: false };
-    case 'available':
-      return { fill, stroke, icon, opacity: 1,    strokeW: 2.5, dim: false };
-    case 'visited':
-      return { fill: '#b8a878', stroke: '#7a5c20', icon: '✓', opacity: 0.85, strokeW: 1.5, dim: true };
-    default: // locked
-      return { fill: '#d4c9a8', stroke: '#a89870', icon: '🔒', opacity: 0.45, strokeW: 1,   dim: true };
-  }
+// ── Pixel-art tree shape (SVG) ────────────────────────────────
+function PixelTree({ x, y, size = 22, opacity = 0.55 }) {
+  const h = Math.round(size * 1.4);
+  const tw = Math.round(size * 0.28);
+  const th = Math.round(size * 0.45);
+  return (
+    <g opacity={opacity}>
+      {/* Top crown */}
+      <polygon
+        points={`${x},${y - h}  ${x - size},${y - size * 0.3}  ${x + size},${y - size * 0.3}`}
+        fill="#0a2010"
+      />
+      {/* Middle crown */}
+      <polygon
+        points={`${x},${y - h * 0.55}  ${x - size * 0.8},${y}  ${x + size * 0.8},${y}`}
+        fill="#0c2812"
+      />
+      {/* Trunk */}
+      <rect x={x - tw / 2} y={y} width={tw} height={th} fill="#071408" />
+    </g>
+  );
 }
 
-// ── Cubic bezier path between two SVG points ─────────────────
-function curvePath(x1, y1, x2, y2) {
-  const cp = (y1 + y2) / 2;
-  return `M ${x1} ${y1} C ${x1} ${cp}, ${x2} ${cp}, ${x2} ${y2}`;
+// ── Pixel-art mountain ────────────────────────────────────────
+function PixelMountain({ x, y, w = 80, h = 50, opacity = 0.4 }) {
+  return (
+    <polygon
+      points={`${x - w},${y}  ${x},${y - h}  ${x + w},${y}`}
+      fill="#081810"
+      opacity={opacity}
+    />
+  );
+}
+
+// ── Scattered background decorations (deterministic) ─────────
+function ForestBackground({ svgW, svgH: h }) {
+  // Pre-baked positions so the pattern is consistent every render
+  const trees = [
+    [30, 80, 18], [svgW * 0.15, 160, 14], [svgW * 0.72, 120, 20],
+    [svgW - 35, 200, 16], [svgW * 0.4, 260, 12], [40, 340, 15],
+    [svgW * 0.6, 380, 18], [svgW - 30, 440, 14], [svgW * 0.25, 480, 20],
+    [svgW * 0.85, 560, 13], [55, 600, 17], [svgW * 0.5, 640, 11],
+    [svgW - 50, 700, 19], [svgW * 0.1, 750, 15], [svgW * 0.7, 820, 16],
+    [30, 900, 13], [svgW * 0.45, 950, 18], [svgW - 40, 1000, 14],
+    [svgW * 0.2, 1100, 20], [svgW * 0.8, 1150, 15],
+  ].filter(([, y]) => y < h);
+
+  const mountains = [
+    [svgW * 0.3, h * 0.25, 60, 38],
+    [svgW * 0.7, h * 0.5,  50, 30],
+    [svgW * 0.15, h * 0.7, 70, 42],
+    [svgW * 0.85, h * 0.8, 55, 35],
+  ].filter(([, y]) => y < h);
+
+  return (
+    <g>
+      {mountains.map(([x, y, w, mh], i) => (
+        <PixelMountain key={`m${i}`} x={x} y={y} w={w} h={mh} opacity={0.35} />
+      ))}
+      {trees.map(([x, y, s], i) => (
+        <PixelTree key={`t${i}`} x={x} y={y} size={s} />
+      ))}
+    </g>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -83,239 +130,274 @@ export default function DungeonMap({
   playerMaxHp,
 }) {
   const scrollRef = useRef(null);
-  const visited   = new Set(visitedIds);
+  const [screenW, setScreenW] = useState(() => window.innerWidth || 390);
+
+  useEffect(() => { setScreenW(window.innerWidth || 390); }, []);
+
+  const visited  = new Set(visitedIds);
   const available = new Set(availableIds);
 
   const { nodes, rows, cols } = map;
-  const lyt  = layout(cols);
+  const lyt    = layout(cols, screenW);
   const height = svgH(rows);
 
-  // Visible viewport = 5 rows
-  const viewportH = VISIBLE_ROWS * ROW_STEP + ROW_OFFSET + 16;
+  // Node square size scales with column width, clamped 40–54 px
+  const NS = Math.max(40, Math.min(54, Math.floor(lyt.colStep * 0.70)));
+  const BOSS_NS = NS + 12;
 
-  // Auto-scroll so current node (or start) is centred
+  // Auto-scroll to current node
   useEffect(() => {
     if (!scrollRef.current) return;
     const target = currentId && nodes[currentId]
       ? rowY(nodes[currentId].row, rows)
-      : height - viewportH / 2;   // start = bottom
-    scrollRef.current.scrollTop = target - viewportH / 2 + 20;
-  }, [currentId]);
+      : height;
+    scrollRef.current.scrollTop = target - scrollRef.current.clientHeight / 2 + 24;
+  }, [currentId, height, rows, nodes]);
 
   function stateOf(id) {
-    if (id === currentId)    return 'current';
-    if (visited.has(id))     return 'visited';
-    if (available.has(id))   return 'available';
+    if (id === currentId)   return 'current';
+    if (visited.has(id))    return 'visited';
+    if (available.has(id))  return 'available';
     return 'locked';
   }
 
-  // ── Build SVG elements ──────────────────────────────────────
-  const lines = [];
+  const lines   = [];
   const nodeEls = [];
 
   Object.values(nodes).forEach(node => {
-    const x   = colX(node.col, lyt);
-    const y   = rowY(node.row, rows);
+    const x      = colX(node.col, lyt);
+    const y      = rowY(node.row, rows);
     const isBoss = node.type === 'boss';
-    const r   = isBoss ? BOSS_R : NODE_R;
-    const st  = stateOf(node.id);
-    const vis = nodeVisuals(node.type, st);
+    const ns     = isBoss ? BOSS_NS : NS;
+    const half   = ns / 2;
+    const st     = stateOf(node.id);
     const isAvail   = st === 'available';
     const isCurrent = st === 'current';
+    const isVisited = st === 'visited';
+    const isLocked  = st === 'locked';
     const clickable = isAvail;
 
-    // ── Lines to children (drawn first, behind nodes) ────────
+    // ── Connecting lines (drawn beneath nodes) ──────────────
     node.next.forEach(childId => {
       const child = nodes[childId];
       if (!child) return;
       const cx = colX(child.col, lyt);
       const cy = rowY(child.row, rows);
-
-      // Brighten lines that are on the player's visited path
-      const onPath = visited.has(node.id) || visited.has(childId);
-      const avail  = available.has(childId) && visited.has(node.id);
+      const onPath = visited.has(node.id) && visited.has(childId);
+      const isNextAvail = available.has(childId) && visited.has(node.id);
 
       lines.push(
-        <path
-          key={`ln-${node.id}-${childId}`}
-          d={curvePath(x, y, cx, cy)}
-          stroke={avail ? TYPE_FILL[child.type] ?? '#6b4c11' : onPath ? '#6b4c11' : '#c4b48a'}
-          strokeWidth={avail ? 2.5 : onPath ? 2 : 1.2}
-          strokeDasharray={avail ? 'none' : undefined}
-          fill="none"
-          opacity={avail ? 0.9 : 1}
+        <line key={`ln-${node.id}-${childId}`}
+          x1={x} y1={y} x2={cx} y2={cy}
+          stroke={
+            isNextAvail ? NODE_BORDER[child.type] ?? '#fff'
+            : onPath    ? 'rgba(255,255,255,0.5)'
+            :              'rgba(255,255,255,0.18)'
+          }
+          strokeWidth={isNextAvail ? 2.5 : onPath ? 2 : 1.2}
+          strokeLinecap="round"
         />
       );
     });
 
     // ── Node ─────────────────────────────────────────────────
+    // Border colour & width by state
+    const borderColor = isLocked  ? '#2d3748'
+                      : isVisited ? '#4a5568'
+                      : (isAvail || isCurrent) ? NODE_BORDER[node.type] ?? '#fff'
+                      : NODE_BORDER[node.type];
+    const borderW  = isCurrent ? 3.5 : isAvail ? 3 : isVisited ? 1.5 : 1;
+    const bgColor  = isLocked  ? '#0f172a'
+                   : isVisited ? '#1e2433'
+                   : NODE_BG[node.type] ?? '#0f172a';
+    const opacity  = isLocked ? 0.4 : isVisited ? 0.75 : 1;
+    const iconText = isVisited ? '✓' : isLocked ? '🔒' : NODE_TYPES[node.type]?.icon ?? '❓';
+    const iconSize = isBoss ? Math.round(ns * 0.55) : Math.round(ns * 0.52);
+
     nodeEls.push(
-      <g
-        key={node.id}
-        opacity={vis.opacity}
-        onClick={clickable ? () => onSelectNode && onSelectNode(node.id) : undefined}
-        style={{ cursor: clickable ? 'pointer' : 'default' }}
-      >
-        {/* Outer glow ring for available / current */}
-        {(isAvail || isCurrent) && (
-          <circle cx={x} cy={y} r={r + 8} fill="none"
-            stroke={TYPE_FILL[node.type] ?? '#6b4c11'} strokeWidth={2} opacity={0.4}>
+      <g key={node.id} opacity={opacity}
+         onClick={clickable ? () => onSelectNode?.(node.id) : undefined}
+         style={{ cursor: clickable ? 'pointer' : 'default' }}>
+
+        {/* Outer glow for current/available */}
+        {(isCurrent || isAvail) && (
+          <rect
+            x={x - half - 8} y={y - half - 8}
+            width={ns + 16} height={ns + 16}
+            rx={10} ry={10}
+            fill="none"
+            stroke={NODE_BORDER[node.type] ?? '#fff'}
+            strokeWidth={isCurrent ? 2 : 1.5}
+            opacity={isCurrent ? 0.4 : 0.25}
+          >
             {isCurrent && (
               <>
-                <animate attributeName="r" values={`${r+5};${r+12};${r+5}`} dur="2s" repeatCount="indefinite" />
-                <animate attributeName="opacity" values="0.5;0.15;0.5" dur="2s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.5;0.1;0.5" dur="1.8s" repeatCount="indefinite" />
+                <animate attributeName="stroke-width" values="2;4;2" dur="1.8s" repeatCount="indefinite" />
               </>
             )}
-          </circle>
+          </rect>
         )}
 
-        {/* Main circle */}
-        <circle
-          cx={x} cy={y} r={r}
-          fill={vis.fill}
-          stroke={vis.stroke ?? '#555'}
-          strokeWidth={vis.strokeW}
+        {/* Node background square */}
+        <rect
+          x={x - half} y={y - half}
+          width={ns} height={ns}
+          rx={7} ry={7}
+          fill={bgColor}
+          stroke={borderColor}
+          strokeWidth={borderW}
         />
 
-        {/* Emoji icon — large and centred */}
+        {/* Icon background tint (active nodes only) */}
+        {!isLocked && !isVisited && (
+          <rect
+            x={x - half + 4} y={y - half + 4}
+            width={ns - 8} height={ns - 8}
+            rx={4} ry={4}
+            fill={NODE_ICON_BG[node.type] ?? '#333'}
+            opacity={0.35}
+          />
+        )}
+
+        {/* Emoji icon */}
         <text
-          x={x} y={y + 1}
+          x={x} y={y + 2}
           textAnchor="middle"
           dominantBaseline="middle"
-          fontSize={isBoss ? 20 : 16}
-          fill={st === 'visited' ? '#fff' : st === 'locked' ? '#7a6030' : undefined}
+          fontSize={iconSize}
+          fill={isVisited ? '#a0aec0' : '#fff'}
           style={{ userSelect: 'none', pointerEvents: 'none' }}
         >
-          {vis.icon}
+          {iconText}
         </text>
 
-        {/* Type label below node (available + current + boss only) */}
+        {/* Label below node */}
         {(isAvail || isCurrent || isBoss) && (
           <text
-            x={x} y={y + r + 11}
+            x={x} y={y + half + 14}
             textAnchor="middle"
             dominantBaseline="middle"
-            fontSize={9}
+            fontSize={10}
             fontWeight="700"
-            fill={TYPE_STROKE[node.type] ?? '#4a3000'}
+            fill={NODE_BORDER[node.type] ?? '#fff'}
             style={{ userSelect: 'none', pointerEvents: 'none' }}
           >
-            {NODE_TYPES[node.type]?.label ?? ''}
+            {(NODE_TYPES[node.type]?.label ?? '').toUpperCase()}
           </text>
         )}
 
-        {/* BOSS label above */}
+        {/* BOSS crown label */}
         {isBoss && (
-          <text x={x} y={y - r - 10} textAnchor="middle" dominantBaseline="middle"
-            fontSize={10} fontWeight="bold" fill="#78350f"
-            style={{ userSelect: 'none', pointerEvents: 'none' }}>
-            BOSS
+          <text
+            x={x} y={y - half - 14}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize={11}
+            fontWeight="900"
+            fill="#fbbf24"
+            style={{ userSelect: 'none', pointerEvents: 'none' }}
+          >
+            ▲ BOSS ▲
           </text>
         )}
       </g>
     );
   });
 
-  // Floor labels on the right edge
+  // Floor labels
   const floorLabels = [];
-  for (let r = 0; r < rows; r++) {
-    const y = rowY(r, rows);
-    const isStart = r === 0;
-    const isBossRow = r === rows - 1;
+  for (let row = 0; row < rows; row++) {
+    const y         = rowY(row, rows);
+    const isStart   = row === 0;
+    const isBossRow = row === rows - 1;
     floorLabels.push(
-      <text key={`fl-${r}`}
-        x={lyt.svgW - 6} y={y + 1}
+      <text key={`fl-${row}`}
+        x={lyt.svgW - 8} y={y}
         textAnchor="end" dominantBaseline="middle"
-        fontSize={8} fill={isBossRow ? '#78350f' : isStart ? '#7c6a3a' : '#a89060'}
+        fontSize={9} fontWeight="600"
+        fill={isBossRow ? '#fbbf24' : isStart ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.22)'}
         style={{ userSelect: 'none' }}>
-        {isBossRow ? 'BOSS' : isStart ? 'START' : `F${r + 1}`}
+        {isBossRow ? '👑' : isStart ? 'START' : `F${row + 1}`}
       </text>
     );
   }
 
   const hpPct   = playerMaxHp > 0 ? Math.max(0, Math.min(100, (playerHp / playerMaxHp) * 100)) : 100;
-  const hpColor = hpPct > 50 ? '#22c55e' : hpPct > 25 ? '#f59e0b' : '#ef4444';
+  const hpColor = hpPct > 50 ? '#4ade80' : hpPct > 25 ? '#fbbf24' : '#f87171';
 
   return (
     <div className="flex flex-col h-full">
 
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-800 flex-shrink-0">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between px-4 py-3 flex-shrink-0"
+           style={{ background: '#0a1a0a', borderBottom: '2px solid #1a3a1a' }}>
         <div className="flex items-center gap-2">
           <span className="text-xl">{dungeonEmoji}</span>
-          <span className="font-bold text-white text-sm">{dungeonName}</span>
+          <span className="font-black text-white tracking-wide" style={{ fontFamily: 'monospace' }}>
+            {dungeonName.toUpperCase()}
+          </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-red-400">❤️</span>
-          <div className="w-20 h-2 bg-gray-700 rounded-full overflow-hidden">
-            <div className="h-full rounded-full transition-all"
-                 style={{ width: `${hpPct}%`, background: hpColor }} />
+          <span className="text-sm">❤️</span>
+          <div className="w-28 h-3 rounded-sm overflow-hidden" style={{ background: '#1a1a1a', border: '1px solid #333' }}>
+            <div className="h-full transition-all" style={{ width: `${hpPct}%`, background: hpColor }} />
           </div>
-          <span className="text-xs text-gray-400">{playerHp}/{playerMaxHp}</span>
+          <span className="text-sm font-black text-white" style={{ fontFamily: 'monospace' }}>
+            {playerHp}/{playerMaxHp}
+          </span>
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex gap-3 px-4 py-1.5 border-b border-gray-800 flex-shrink-0 flex-wrap">
-        {Object.entries(NODE_TYPES).map(([key, val]) => (
-          <div key={key} className="flex items-center gap-1">
-            <span className="text-sm">{val.icon}</span>
-            <span className="text-xs text-gray-500">{val.label}</span>
-          </div>
-        ))}
+      {/* ── Scrollable map ── */}
+      <div ref={scrollRef}
+           className="flex-1 overflow-y-auto overflow-x-hidden"
+           style={{ WebkitOverflowScrolling: 'touch', background: '#0d1f0d' }}>
+        <svg
+          width={lyt.svgW} height={height}
+          viewBox={`0 0 ${lyt.svgW} ${height}`}
+          style={{ display: 'block', touchAction: 'pan-y', width: '100%' }}
+        >
+          {/* Dark forest background */}
+          <defs>
+            <linearGradient id="forestBg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stopColor="#081408" />
+              <stop offset="50%"  stopColor="#0d1f0d" />
+              <stop offset="100%" stopColor="#0a1a0a" />
+            </linearGradient>
+          </defs>
+          <rect width={lyt.svgW} height={height} fill="url(#forestBg)" />
+
+          {/* Pixel art trees + mountains */}
+          <ForestBackground svgW={lyt.svgW} svgH={height} />
+
+          {floorLabels}
+          {lines}
+          {nodeEls}
+        </svg>
       </div>
 
-      {/* Scroll hint */}
-      <div className="px-4 py-1 border-b border-gray-800 flex-shrink-0">
-        <p className="text-xs text-gray-600 text-center">Scroll to explore the map · Tap a highlighted node to advance</p>
-      </div>
-
-      {/* ── Scrollable map viewport (5 rows visible) ── */}
-      <div
-        ref={scrollRef}
-        className="flex-shrink-0 overflow-y-auto overflow-x-hidden"
-        style={{ height: viewportH, WebkitOverflowScrolling: 'touch' }}
-      >
-        <div className="flex justify-center">
-          <svg
-            width={lyt.svgW}
-            height={height}
-            viewBox={`0 0 ${lyt.svgW} ${height}`}
-            style={{ display: 'block', touchAction: 'pan-y' }}
-          >
-            {/* Parchment / aged paper background */}
-            <defs>
-              <linearGradient id="parchment" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%"   stopColor="#fdf6e3" />
-                <stop offset="50%"  stopColor="#f5edd6" />
-                <stop offset="100%" stopColor="#ede0c0" />
-              </linearGradient>
-            </defs>
-            <rect width={lyt.svgW} height={height} fill="url(#parchment)" />
-            {/* subtle grain overlay lines */}
-            <rect width={lyt.svgW} height={height} fill="none"
-              stroke="#c4a96030" strokeWidth="0" opacity="0.15" />
-            {floorLabels}
-            {lines}
-            {nodeEls}
-          </svg>
-        </div>
-      </div>
-
-      {/* Available nodes summary */}
+      {/* ── Available node chips ── */}
       {availableIds.length > 0 && (
-        <div className="flex gap-2 px-4 py-2 border-t border-gray-800 flex-shrink-0 flex-wrap">
-          <span className="text-xs text-gray-500">Next:</span>
+        <div className="flex items-center gap-2 px-4 py-3 flex-shrink-0 flex-wrap"
+             style={{ background: '#0a1a0a', borderTop: '2px solid #1a3a1a' }}>
+          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Go →</span>
           {availableIds.map(id => {
-            const n = map.nodes[id];
+            const n   = map.nodes[id];
             if (!n) return null;
             const def = NODE_TYPES[n.type];
             return (
               <button key={id}
-                onClick={() => onSelectNode && onSelectNode(id)}
-                className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg border border-gray-700 hover:border-gray-500 bg-gray-800/60 btn-press transition-all">
+                onClick={() => onSelectNode?.(id)}
+                className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg btn-press transition-all font-bold"
+                style={{
+                  background: NODE_BG[n.type],
+                  border: `2px solid ${NODE_BORDER[n.type]}`,
+                  color: NODE_BORDER[n.type],
+                  fontFamily: 'monospace',
+                }}>
                 <span>{def?.icon}</span>
-                <span style={{ color: TYPE_STROKE[n.type] }}>{def?.label}</span>
+                <span>{def?.label?.toUpperCase()}</span>
               </button>
             );
           })}

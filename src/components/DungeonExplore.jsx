@@ -26,7 +26,14 @@ import {
 import { VOCAB_WORDS, GRAMMAR_CHALLENGES } from '../data/index';
 import { ALL_PASSAGES } from '../data/reading/index';
 import { POTIONS_MAP } from '../data/rpg/items';
-import { generateMap, getAvailableNodes, getNodeDifficulty, generateRunSeed, getNumPaths, NODE_TYPES } from '../utils/mapGen';
+import { generateMap, getAvailableNodes, getNodeDifficulty, generateRunSeed, getNumPaths, getNumRows, NODE_TYPES } from '../utils/mapGen';
+
+// ── Daily focus: cycles vocab → grammar → reading each day ────
+const DAILY_FOCUS = (() => {
+  const day = Math.floor(Date.now() / 86400000);
+  return ['vocab', 'grammar', 'reading'][day % 3];
+})();
+const FOCUS_LABEL = { vocab: '📖 Vocab', grammar: '✍️ Grammar', reading: '📜 Reading' };
 import EnemySprite from './EnemySprite';
 import DungeonMap from './DungeonMap';
 
@@ -105,6 +112,15 @@ function DungeonSelectScreen({ state, rpgStats, onEnter, onBack }) {
         <h1 className="text-xl font-bold text-white">⚔️ Choose Dungeon</h1>
       </div>
 
+      {/* Daily focus banner */}
+      <div className="bg-amber-950/50 border border-amber-700/60 rounded-xl p-3 mb-3 flex items-center gap-2">
+        <span className="text-lg">⭐</span>
+        <div>
+          <span className="text-xs font-bold text-amber-400">Today's Focus: {FOCUS_LABEL[DAILY_FOCUS]}</span>
+          <span className="text-xs text-gray-400 ml-2">— questions earn 2× XP</span>
+        </div>
+      </div>
+
       {/* Warning banner */}
       <div className="bg-red-950/40 border border-red-800/50 rounded-xl p-3 mb-5 flex gap-2 text-xs text-red-300">
         <span className="flex-shrink-0">⚠️</span>
@@ -146,7 +162,7 @@ function DungeonSelectScreen({ state, rpgStats, onEnter, onBack }) {
                   </div>
                   <div className="text-xs text-gray-400 mt-0.5">{d.subtitle}</div>
                   <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                    <span>🗺️ 15 floors</span>
+                    <span>🗺️ {getNumRows(d.order ?? 1) - 1} floors</span>
                     <span>Lv {d.requiredLevel}+</span>
                     <span className="text-amber-400">+{d.completionXP} XP</span>
                     <span className="text-cyan-400">+{d.completionGems} 💎</span>
@@ -165,6 +181,7 @@ function DungeonSelectScreen({ state, rpgStats, onEnter, onBack }) {
 
 // ── Confirm Entry Screen ──────────────────────────────────────
 function ConfirmScreen({ dungeon, onConfirm, onBack }) {
+  const numFloors = getNumRows(dungeon.order ?? 1) - 1;
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 animate-fade-in">
       <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-red-900/60 rounded-2xl p-8 text-center"
@@ -176,7 +193,7 @@ function ConfirmScreen({ dungeon, onConfirm, onBack }) {
         <div className="bg-red-950/50 border border-red-800/60 rounded-xl p-4 mb-6 text-left space-y-2">
           <div className="text-xs font-bold text-red-400 uppercase tracking-wider mb-2">⚠️ Rules of the Dungeon</div>
           {[
-            ['🗺️', '15 procedurally generated floors — the path is different every run'],
+            ['🗺️', `${numFloors} procedurally generated floors — the path changes every run`],
             ['⚔️', 'Answer questions to fight enemies — wrong answers deal damage'],
             ['🚪', 'Exiting mid-run restores your pre-run XP, level, and gems'],
             ['🏕️', 'Rest Sites restore HP. Scroll nodes give free XP (no combat)'],
@@ -204,50 +221,207 @@ function ConfirmScreen({ dungeon, onConfirm, onBack }) {
   );
 }
 
-// ── Camp Node Screen ──────────────────────────────────────────
-function CampScreen({ rpgStats, onHeal, onStudy, onContinue }) {
-  const [used, setUsed] = useState(false);
-  const healAmt = Math.floor(rpgStats.maxHp * 0.3);
+// ── Camp Node Screen — SM-2 spaced repetition review ─────────
+function CampScreen({ rpgStats, vocabSM2 = {}, vocabWords = [], onHeal, onContinue }) {
+  const [mode, setMode]         = useState('choice');   // choice | review | done
+  const [words, setWords]       = useState([]);
+  const [wIdx, setWIdx]         = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [feedback, setFeedback] = useState(null);
+  const [history, setHistory]   = useState([]);         // true/false per word
 
-  return (
-    <div className="max-w-2xl mx-auto px-4 py-6 animate-fade-in">
-      <div className="bg-gradient-to-br from-green-950/60 to-gray-900 border border-green-800/50 rounded-2xl p-8 text-center">
-        <div className="text-6xl mb-3">🏕️</div>
-        <h2 className="text-xl font-bold text-white mb-1">Rest Site</h2>
-        <p className="text-sm text-gray-400 mb-6">Take a moment to recover.</p>
+  const flatHeal = Math.floor(rpgStats.maxHp * 0.35);
 
-        <div className="mb-5">
+  // Words due for SM-2 review right now
+  const dueWords = (() => {
+    const now = Date.now();
+    return vocabWords.filter(w => {
+      const sm = vocabSM2[w.id];
+      return sm && sm.nextReview <= now;
+    }).slice(0, 5);
+  })();
+  const hasDue = dueWords.length >= 2;
+
+  function startReview() {
+    setWords(dueWords);
+    setWIdx(0);
+    setSelected(null);
+    setFeedback(null);
+    setHistory([]);
+    setMode('review');
+  }
+
+  function handleAnswer(idx) {
+    if (selected !== null) return;
+    const w = words[wIdx];
+    const ok = idx === w.answer;
+    setSelected(idx);
+    setFeedback(ok ? 'correct' : 'wrong');
+    setHistory(h => [...h, ok]);
+  }
+
+  function nextWord() {
+    if (wIdx + 1 >= words.length) {
+      const correct = history.filter(Boolean).length + (feedback === 'correct' ? 1 : 0);
+      const pct     = correct / words.length;
+      const heal    = Math.round(rpgStats.maxHp * 0.65 * pct);
+      if (heal > 0) onHeal(heal);
+      setMode('done');
+    } else {
+      setWIdx(i => i + 1);
+      setSelected(null);
+      setFeedback(null);
+    }
+  }
+
+  // ── Choice ────────────────────────────────────────────────
+  if (mode === 'choice') {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-8 animate-fade-in">
+        <div className="text-center mb-6">
+          <div className="text-5xl mb-3">🏕️</div>
+          <h2 className="text-xl font-bold text-white">Rest Site</h2>
+          <p className="text-sm text-gray-400 mt-1">A moment of quiet before the next battle.</p>
+        </div>
+
+        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-3 mb-5">
           <HpBar current={rpgStats.hp} max={rpgStats.maxHp} label="❤️ Current HP" />
         </div>
 
-        {!used ? (
-          <div className="space-y-3">
-            <button
-              onClick={() => { onHeal(healAmt); setUsed(true); }}
-              className="w-full py-4 rounded-xl bg-gradient-to-r from-green-700 to-emerald-600 text-white font-bold transition-all btn-press hover:from-green-600"
-            >
-              🩹 Rest — Restore {healAmt} HP
+        <div className="space-y-3">
+          {hasDue ? (
+            <button onClick={startReview}
+              className="w-full p-5 rounded-2xl bg-gradient-to-r from-amber-700 to-yellow-600 text-white transition-all btn-press text-left">
+              <div className="font-bold text-lg">📚 Review Due Words</div>
+              <div className="text-sm opacity-80 mt-0.5">
+                {dueWords.length} words overdue · Heal up to {Math.round(rpgStats.maxHp * 0.65)} HP based on accuracy
+              </div>
             </button>
-            <button
-              onClick={() => { onStudy(); setUsed(true); }}
-              className="w-full py-4 rounded-xl bg-gray-800 border border-gray-600 text-white font-bold transition-all btn-press hover:bg-gray-700"
-            >
-              📚 Study — +50 XP (no HP restore)
-            </button>
-          </div>
-        ) : (
-          <div className="text-sm text-green-400 mb-4 font-semibold">✅ Rested. Ready to continue!</div>
-        )}
+          ) : null}
 
-        <button onClick={onContinue} disabled={!used}
-          className={`w-full py-4 rounded-xl font-bold text-white transition-all btn-press mt-3 ${
-            used ? 'bg-gradient-to-r from-indigo-700 to-purple-600 hover:from-indigo-600' : 'bg-gray-800 opacity-40 cursor-not-allowed'
-          }`}>
-          Continue →
+          <button onClick={() => { onHeal(flatHeal); onContinue(); }}
+            className={`w-full p-5 rounded-2xl text-white transition-all btn-press text-left ${
+              hasDue
+                ? 'bg-gray-800 border border-gray-600'
+                : 'bg-gradient-to-r from-green-700 to-emerald-600'
+            }`}>
+            <div className="font-bold text-lg">🩹 {hasDue ? 'Just Rest' : 'Rest & Recover'}</div>
+            <div className="text-sm opacity-70 mt-0.5">Restore {flatHeal} HP · Skip review</div>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Review ────────────────────────────────────────────────
+  if (mode === 'review') {
+    const w = words[wIdx];
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-6 animate-fade-in">
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-sm font-bold text-amber-400">📚 Word Review</span>
+          <span className="text-xs text-gray-400">{wIdx + 1} / {words.length}</span>
+        </div>
+
+        {/* Progress bar */}
+        <div className="flex gap-1 mb-5">
+          {words.map((_, i) => (
+            <div key={i} className={`flex-1 h-1.5 rounded-full transition-all ${
+              i < history.length
+                ? history[i] ? 'bg-green-500' : 'bg-red-500'
+                : i === wIdx ? 'bg-amber-400' : 'bg-gray-700'
+            }`} />
+          ))}
+        </div>
+
+        <div className={`bg-gray-900 border rounded-2xl p-5 mb-4 ${
+          feedback === 'correct' ? 'border-green-500' : feedback === 'wrong' ? 'border-red-500' : 'border-amber-700/40'
+        }`}>
+          <div className="text-center mb-4">
+            <div className="text-xs text-amber-400 font-bold uppercase tracking-wider mb-2">
+              Spaced Repetition · Due for Review
+            </div>
+            {w.word && <div className="text-3xl font-bold text-white">{w.word}</div>}
+            {w.partOfSpeech && <div className="text-xs text-gray-500 mt-1">{w.partOfSpeech}</div>}
+            {w.sentence && (
+              <div className="mt-3 bg-gray-800/70 border border-gray-700 rounded-xl p-3 text-left">
+                <div className="text-xs text-gray-500 mb-1">In context</div>
+                <div className="text-sm text-gray-300 italic">"{w.sentence}"</div>
+              </div>
+            )}
+          </div>
+
+          <div className="text-sm text-gray-100 font-semibold mb-3">🤔 {w.question}</div>
+
+          <div className="space-y-2">
+            {(w.options ?? []).map((opt, idx) => {
+              let cls = 'bg-gray-800 border-gray-600 text-gray-200 hover:bg-gray-700';
+              if (selected !== null) {
+                if (idx === w.answer)                   cls = 'bg-green-900/60 border-green-500 text-green-200';
+                else if (idx === selected)              cls = 'bg-red-900/60 border-red-500 text-red-200';
+                else                                    cls = 'bg-gray-800/40 border-gray-700 text-gray-500';
+              }
+              return (
+                <button key={idx} onClick={() => handleAnswer(idx)} disabled={selected !== null}
+                  className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-all btn-press ${cls}`}>
+                  <span className="inline-block w-6 text-center mr-2 opacity-60 font-bold">{['A','B','C','D'][idx]}</span>
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+
+          {feedback && w.explanation && (
+            <div className={`mt-3 p-3 rounded-xl text-xs animate-fade-in ${
+              feedback === 'correct'
+                ? 'bg-green-900/40 border border-green-700 text-green-200'
+                : 'bg-red-900/40 border border-red-700 text-red-200'
+            }`}>
+              <div className="font-semibold mb-1">{feedback === 'correct' ? '✅ Correct!' : '❌ Wrong —'}</div>
+              <div className="leading-relaxed opacity-90">{w.explanation}</div>
+            </div>
+          )}
+        </div>
+
+        {selected !== null && (
+          <button onClick={nextWord}
+            className={`w-full py-4 rounded-xl font-bold text-white transition-all btn-press ${
+              feedback === 'correct'
+                ? 'bg-gradient-to-r from-green-700 to-emerald-600'
+                : 'bg-gradient-to-r from-indigo-700 to-purple-600'
+            }`}>
+            {wIdx + 1 >= words.length ? '🏕️ Finish Review' : 'Next Word →'}
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // ── Done ──────────────────────────────────────────────────
+  if (mode === 'done') {
+    const correct  = history.filter(Boolean).length;
+    const pct      = Math.round((correct / words.length) * 100);
+    const healGiven = Math.round(rpgStats.maxHp * 0.65 * (correct / words.length));
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-8 animate-fade-in text-center">
+        <div className="text-5xl mb-3">✨</div>
+        <h2 className="text-xl font-bold text-white mb-1">Review Complete</h2>
+        <p className="text-sm text-gray-400 mb-5">{correct}/{words.length} correct — {pct}% accuracy</p>
+
+        <div className="bg-green-900/30 border border-green-700/40 rounded-2xl p-5 mb-5">
+          <div className="text-2xl font-bold text-green-400">+{healGiven} HP restored</div>
+          <div className="text-xs text-gray-400 mt-1">Proportional to your accuracy</div>
+        </div>
+
+        <button onClick={onContinue}
+          className="w-full py-4 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-700 to-purple-600 transition-all btn-press">
+          🗺️ Back to Map →
         </button>
       </div>
-    </div>
-  );
+    );
+  }
+
+  return null;
 }
 
 // ── Main DungeonExplore ───────────────────────────────────────
@@ -271,18 +445,26 @@ export default function DungeonExplore({
   const [pendingNodeId, setPendingNodeId] = useState(null); // node clicked, about to enter
 
   // ── Combat state ────────────────────────────────────────────
-  const [enemy, setEnemy]         = useState(null);
-  const [difficulty, setDiff]     = useState({ hpMult: 1, xpMult: 1, gemMult: 1, tierBoost: 0 });
-  const [enemyHp, setEnemyHp]     = useState(0);
+  const [enemy, setEnemy]           = useState(null);
+  const [difficulty, setDiff]       = useState({ hpMult: 1, xpMult: 1, gemMult: 1, tierBoost: 0 });
+  const [enemyHp, setEnemyHp]       = useState(0);
   const [enemyMaxHp, setEnemyMaxHp] = useState(0);
   const [isBossNode, setIsBossNode] = useState(false);
-  const [questions, setQuestions]  = useState([]);
-  const [qIdx, setQIdx]           = useState(0);
-  const [selected, setSelected]   = useState(null);
-  const [feedback, setFeedback]   = useState(null);
-  const [combatLog, setCombatLog] = useState([]);
-  const [nodeXP, setNodeXP]       = useState(0);
-  const [nodeGems, setNodeGems]   = useState(0);
+  const [questions, setQuestions]   = useState([]);
+  const [qIdx, setQIdx]             = useState(0);
+  const [selected, setSelected]     = useState(null);
+  const [feedback, setFeedback]     = useState(null);
+  const [combatLog, setCombatLog]   = useState([]);
+  const [nodeXP, setNodeXP]         = useState(0);
+  const [nodeGems, setNodeGems]     = useState(0);
+  const [weakCategory, setWeakCategory] = useState(null); // boss uses player's weakest category
+
+  // ── Educational mechanics refs ──────────────────────────────
+  // Wrong-answer revenge queue — questions come back after 3 correct
+  const revengeQueueRef        = useRef([]);
+  const correctSinceRevengeRef = useRef(0);
+  // Track wrong answers per category to feed boss fights
+  const wrongCategoriesRef     = useRef({});  // { vocab: N, grammar: N, reading: N }
 
   // ── Question pool (whole run) ───────────────────────────────
   const poolRef   = useRef([]);
@@ -306,13 +488,18 @@ export default function DungeonExplore({
     if (!d) return;
     const seed     = generateRunSeed();
     const numPaths = getNumPaths(d.order ?? 1);
-    const map      = generateMap(seed, numPaths);
-    poolRef.current = buildPool(d);
-    usedRef.current = new Set();
+    const numRows  = getNumRows(d.order ?? 1);
+    const map      = generateMap(seed, numPaths, numRows);
+    poolRef.current          = buildPool(d);
+    usedRef.current          = new Set();
+    revengeQueueRef.current  = [];
+    wrongCategoriesRef.current = {};
+    correctSinceRevengeRef.current = 0;
     setActiveMap(map);
     setDungeonId(id);
     setVisitedIds([]);
     setCurrentNodeId(null);
+    setWeakCategory(null);
     startDungeonRun(id, seed);
     setPhase('map');
   }, [startDungeonRun]);
@@ -341,13 +528,34 @@ export default function DungeonExplore({
       // Monster / Elite / Boss — set up combat
       const diff = getNodeDifficulty(node.type);
       setDiff(diff);
-      setIsBossNode(node.type === 'boss');
-      const foe = pickDungeonEnemy(dungeon, node.type === 'boss');
+      const isBoss = node.type === 'boss';
+      setIsBossNode(isBoss);
+      const foe = pickDungeonEnemy(dungeon, isBoss);
       if (!foe) return;
       const scaledHp = Math.round(foe.hp * diff.hpMult);
       const nQ = encounterLength(foe, diff);
-      const qs = pickQuestions(poolRef.current, nQ, usedRef.current);
+
+      // Boss: pull questions from the player's weakest category
+      let qs;
+      if (isBoss) {
+        const cats = wrongCategoriesRef.current;
+        const sorted = Object.entries(cats).sort(([,a],[,b]) => b - a);
+        const weak = sorted[0]?.[0] ?? null;
+        setWeakCategory(weak);
+        if (weak) {
+          const weakPool = poolRef.current.filter(q => q.qtype === weak);
+          qs = pickQuestions(weakPool.length >= nQ ? weakPool : poolRef.current, nQ, usedRef.current);
+        } else {
+          qs = pickQuestions(poolRef.current, nQ, usedRef.current);
+        }
+      } else {
+        setWeakCategory(null);
+        qs = pickQuestions(poolRef.current, nQ, usedRef.current);
+      }
+
       qs.forEach(q => usedRef.current.add(q.id));
+      revengeQueueRef.current = [];          // fresh queue per encounter
+      correctSinceRevengeRef.current = 0;
       setEnemy({ ...foe, hp: scaledHp, xpReward: Math.round(foe.xpReward * diff.xpMult), gemReward: Math.round(foe.gemReward * diff.gemMult) });
       setEnemyHp(scaledHp);
       setEnemyMaxHp(scaledHp);
@@ -372,24 +580,36 @@ export default function DungeonExplore({
   // ── Combat: handle answer ─────────────────────────────────
   const handleAnswer = useCallback((idx) => {
     if (selected !== null) return;
-    const q       = questions[qIdx];
-    const correct = idx === q.answer;
+    const q         = questions[qIdx];
+    const correct   = idx === q.answer;
+    const isRevenge = q._revenge === true;
+    const dailyMult = q.qtype === DAILY_FOCUS ? 2 : 1;
     setSelected(idx);
     setFeedback(correct ? 'correct' : 'wrong');
 
     if (correct) {
-      const dmg = Math.max(5, totalAtk);
+      correctSinceRevengeRef.current++;
+      const dmg    = Math.max(5, totalAtk);
       const newEHp = Math.max(0, enemyHp - dmg);
       setEnemyHp(newEHp);
       setCombatLog(l => [`⚔️ Hit! ${enemy?.name} takes ${dmg} dmg.`, ...l.slice(0,2)]);
-      setNodeXP(x => x + (q.xp || 15));
-      setNodeGems(g => g + Math.floor((q.xp || 15) / 10));
+      const baseXP  = q.xp || 15;
+      const xpGained = Math.round(baseXP * dailyMult);
+      setNodeXP(x => x + xpGained);
+      setNodeGems(g => g + Math.floor(xpGained / 10));
       const skill = q.qtype === 'vocab' ? 'vocabulary' : q.qtype === 'reading' ? 'reading' : 'grammar';
-      awardXP(q.xp || 15, skill, q.id);
+      awardXP(xpGained, skill, q.id);
       updateQuestProgress(q.qtype === 'vocab' ? 'vocab' : q.qtype);
       updateQuestProgress('any');
       if (newEHp <= 0) { setTimeout(() => setPhase('node_complete'), 500); return; }
     } else {
+      correctSinceRevengeRef.current = 0;
+      // Queue wrong questions for revenge (skip if already a revenge question)
+      if (!isRevenge) {
+        revengeQueueRef.current.push({ ...q, _revenge: true });
+        // Track weak category for boss fights
+        wrongCategoriesRef.current[q.qtype] = (wrongCategoriesRef.current[q.qtype] || 0) + 1;
+      }
       const dmg = Math.max(1, (enemy?.attack ?? 5) - totalDef);
       takeDamage(dmg);
       setCombatLog(l => [`💥 ${enemy?.name} hits you for ${dmg}!`, ...l.slice(0,2)]);
@@ -399,14 +619,31 @@ export default function DungeonExplore({
   }, [selected, questions, qIdx, enemyHp, totalAtk, totalDef, curHp, enemy, awardXP, updateQuestProgress, takeDamage, recordWrong]);
 
   const nextQuestion = useCallback(() => {
-    if (qIdx + 1 >= questions.length) {
+    const nextIdx = qIdx + 1;
+
+    // After 3 correct in a row, surface a revenge question
+    if (correctSinceRevengeRef.current >= 3 && revengeQueueRef.current.length > 0) {
+      const revengeQ = revengeQueueRef.current.shift();
+      correctSinceRevengeRef.current = 0;
+      setQuestions(prev => {
+        const copy = [...prev];
+        copy.splice(nextIdx, 0, revengeQ);
+        return copy;
+      });
+      setQIdx(nextIdx);
+      setSelected(null);
+      setFeedback(null);
+      return;
+    }
+
+    if (nextIdx >= questions.length) {
       if (enemyHp > 0) {
         setNodeXP(x => Math.floor(x * 0.6));
         setNodeGems(g => Math.floor(g * 0.6));
       }
       setPhase('node_complete');
     } else {
-      setQIdx(i => i + 1);
+      setQIdx(nextIdx);
       setSelected(null);
       setFeedback(null);
     }
@@ -500,8 +737,9 @@ export default function DungeonExplore({
     return (
       <CampScreen
         rpgStats={rpgStats}
+        vocabSM2={state.vocabSM2 ?? {}}
+        vocabWords={VOCAB_WORDS}
         onHeal={(amt) => healPlayer(amt)}
-        onStudy={() => awardXP(50, null, null)}
         onContinue={() => { markNodeComplete(pendingNodeId); setPhase('map'); }}
       />
     );
@@ -606,6 +844,28 @@ export default function DungeonExplore({
           <div className="mt-3 text-xs text-amber-400">+{enemy.xpReward} XP · +{enemy.gemReward} 💎</div>
         </div>
 
+        {/* Boss weak category warning */}
+        {isBossNode && weakCategory && (
+          <div className="bg-red-950/50 border border-red-700/60 rounded-xl p-3 mb-3 flex gap-2 text-xs text-red-300">
+            <span>⚠️</span>
+            <span>The boss has studied your weaknesses! Expect <strong>{FOCUS_LABEL[weakCategory]}</strong> questions — your most missed category.</span>
+          </div>
+        )}
+
+        {/* Word preview — upcoming vocab words */}
+        {questions.filter(q => q.qtype === 'vocab' && q.word).slice(0, 3).length > 0 && (
+          <div className="bg-gray-800/40 border border-gray-700 rounded-xl p-3 mb-3">
+            <div className="text-xs text-gray-500 mb-2">🔍 Words you'll face — study them now:</div>
+            <div className="flex gap-2 flex-wrap">
+              {questions.filter(q => q.qtype === 'vocab' && q.word).slice(0, 3).map(q => (
+                <span key={q.id} className="text-sm font-bold text-indigo-300 bg-indigo-900/50 border border-indigo-700/50 px-2.5 py-1 rounded-lg">
+                  {q.word}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="bg-gray-800/40 border border-gray-700 rounded-xl p-3 mb-4 text-xs text-gray-400 space-y-1">
           <div>⚔️ Your attack: <span className="text-green-400 font-bold">{Math.max(5, totalAtk)} dmg</span> per correct answer</div>
           <div>💥 Enemy attack: <span className="text-red-400 font-bold">{Math.max(1, (enemy.attack ?? 5) - totalDef)} dmg</span> if wrong</div>
@@ -676,11 +936,24 @@ export default function DungeonExplore({
 
         {combatLog[0] && <div className="text-xs text-gray-500 mb-2 h-4 animate-fade-in">{combatLog[0]}</div>}
 
+        {/* Revenge indicator */}
+        {questions[qIdx]?._revenge && (
+          <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-xl bg-red-950/60 border border-red-700/60 animate-fade-in">
+            <span className="text-base">💀</span>
+            <span className="text-xs font-bold text-red-400">The enemy remembers! Answer correctly to push back.</span>
+          </div>
+        )}
+
         {/* Question card */}
         <div className={`bg-gray-900 border rounded-2xl p-5 mb-4 ${feedback === 'correct' ? 'border-green-500' : feedback === 'wrong' ? 'border-red-500' : isBossNode ? 'border-yellow-900/60' : 'border-gray-700'}`}>
           <div className="flex items-center justify-between mb-4">
             <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${TYPE_BG[q.qtype]} ${TYPE_COLOR[q.qtype]}`}>{TYPE_LABEL[q.qtype]}</span>
-            <span className="text-xs text-amber-400">+{q.xp || 15} XP</span>
+            <div className="flex items-center gap-2">
+              {q.qtype === DAILY_FOCUS && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-900/60 border border-amber-600/50 text-amber-300 font-bold">⭐ 2×</span>
+              )}
+              <span className="text-xs text-amber-400">+{Math.round((q.xp || 15) * (q.qtype === DAILY_FOCUS ? 2 : 1))} XP</span>
+            </div>
           </div>
 
           {q.qtype === 'reading' && q.passage && (
