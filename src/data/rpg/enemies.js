@@ -490,7 +490,6 @@ export const ENEMIES = [
     sprite: 'enemy_xaldrath',
     color: '#6d28d9',
     shape: 'humanoid',
-    elite: true,                // uses large boss sprite sheet
     floor: [6],
     hp: 160,
     attack: 38,
