@@ -324,6 +324,7 @@ export const ENEMIES = [
     sprite: 'enemy_sylvarim',
     color: '#166534',
     shape: 'humanoid',
+    elite: true,                // uses large boss sprite sheet
     floor: [4],
     hp: 65,
     attack: 22,
@@ -375,6 +376,7 @@ export const ENEMIES = [
     sprite: 'enemy_volthorn',
     color: '#fde68a',
     shape: 'dragon',
+    elite: true,                // uses large boss sprite sheet
     floor: [4, 5],
     hp: 80,
     attack: 25,
@@ -431,6 +433,7 @@ export const ENEMIES = [
     sprite: 'enemy_pharaxon',
     color: '#fbbf24',
     shape: 'humanoid',
+    elite: true,                // uses large boss sprite sheet
     floor: [5],
     hp: 105,
     attack: 29,
@@ -487,6 +490,7 @@ export const ENEMIES = [
     sprite: 'enemy_xaldrath',
     color: '#6d28d9',
     shape: 'humanoid',
+    elite: true,                // uses large boss sprite sheet
     floor: [6],
     hp: 160,
     attack: 38,
@@ -538,6 +542,7 @@ export const ENEMIES = [
     sprite: 'enemy_zervonis',
     color: '#1e293b',
     shape: 'spirit',
+    elite: true,                // uses large boss sprite sheet
     floor: [6],
     hp: 165,
     attack: 44,

@@ -54,7 +54,8 @@
 //   potion_hi.png     potion_elixir.png
 // ============================================================
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { getMonsterSpriteStyle, getBossSpriteStyle } from '../data/rpg/spriteConfig';
 
 const BASE_URL = import.meta.env.BASE_URL || '/';
 
@@ -153,33 +154,91 @@ function PlaceholderSprite({ enemy, size = 64, className = '' }) {
 
 /**
  * EnemySprite
- * Tries to load the PNG sprite from /sprites/enemies/{enemy.sprite}.png
- * Falls back to the SVG placeholder if the image fails to load.
+ *
+ * Priority order:
+ *  1. Boss/elite sheet  (bosses.png)   — if getBossSpriteStyle returns coords
+ *  2. Monster sheet     (monsters.png) — if getMonsterSpriteStyle returns coords
+ *  3. Individual PNG    (/sprites/enemies/{sprite}.png)
+ *  4. SVG placeholder   (always works, no files needed)
+ *
+ * Drop the sprite sheets into public/sprites/ and sprites appear automatically.
  */
 export default function EnemySprite({ enemy, size = 64, className = '', animated = false }) {
-  const [usePlaceholder, setUsePlaceholder] = useState(false);
-  const src = `${BASE_URL}sprites/enemies/${enemy.sprite}.png`;
+  const [sheetFailed, setSheetFailed] = useState(false);
+  const [pngFailed, setPngFailed]     = useState(false);
 
-  if (usePlaceholder) {
+  const animCls = animated ? 'animate-bounce' : '';
+
+  // 1 & 2 — Try sprite sheets first (boss sheet → monster sheet)
+  if (!sheetFailed) {
+    const isBossType  = enemy.shape === 'boss' || enemy.elite;
+    const sheetStyle  = isBossType
+      ? getBossSpriteStyle(enemy.sprite, size) ?? getMonsterSpriteStyle(enemy.sprite, size)
+      : getMonsterSpriteStyle(enemy.sprite, size) ?? getBossSpriteStyle(enemy.sprite, size);
+
+    if (sheetStyle) {
+      return (
+        <SheetSprite
+          style={sheetStyle}
+          name={enemy.name}
+          className={`${className} ${animCls}`}
+          onFail={() => setSheetFailed(true)}
+        />
+      );
+    }
+  }
+
+  // 3 — Individual PNG fallback
+  if (!pngFailed) {
     return (
-      <div
-        className={`inline-block ${className} ${animated ? 'animate-bounce' : ''}`}
-        style={{ width: size, height: size }}
-      >
-        <PlaceholderSprite enemy={enemy} size={size} />
-      </div>
+      <img
+        src={`${BASE_URL}sprites/enemies/${enemy.sprite}.png`}
+        alt={enemy.name}
+        width={size}
+        height={size}
+        className={`${className} ${animCls}`}
+        style={{ imageRendering: 'pixelated' }}
+        onError={() => setPngFailed(true)}
+      />
     );
   }
 
+  // 4 — SVG placeholder (always available)
   return (
-    <img
-      src={src}
-      alt={enemy.name}
-      width={size}
-      height={size}
-      className={`${className} ${animated ? 'animate-bounce' : ''}`}
-      style={{ imageRendering: 'pixelated' }}
-      onError={() => setUsePlaceholder(true)}
+    <div className={`inline-block ${className} ${animCls}`} style={{ width: size, height: size }}>
+      <PlaceholderSprite enemy={enemy} size={size} />
+    </div>
+  );
+}
+
+/**
+ * Renders a sprite from a sheet using CSS background-position.
+ * Probes the sheet URL with a hidden Image() object on mount so we
+ * can detect a 404 and fall back gracefully — CSS background-image
+ * never fires onError on a <div>.
+ */
+function SheetSprite({ style, name, className, onFail }) {
+  const onFailRef = useRef(onFail);
+  onFailRef.current = onFail;
+
+  useEffect(() => {
+    // Extract the raw URL from the CSS url(...) string
+    const raw = style.backgroundImage ?? '';
+    const url = raw.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
+    if (!url) { onFailRef.current?.(); return; }
+
+    const img = new Image();
+    img.onerror = () => onFailRef.current?.();
+    img.src = url;
+    // On success, nothing to do — the CSS div already shows correctly.
+    // On error, parent's sheetFailed flag causes re-render → falls back.
+  }, [style.backgroundImage]);
+
+  return (
+    <div
+      className={`inline-block ${className}`}
+      style={style}
+      title={name}
     />
   );
 }
