@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { GRAMMAR_CHALLENGES } from '../data/index';
 import { computeStudyReward } from '../utils/studyRewards';
+import { shuffleOptionsPreservingAnswer } from '../utils/shuffle';
 
 const TIER_NAMES = { 1: '8th Grade', 2: '9th-10th Grade', 3: 'SAT Level' };
 const TIER_COLORS = {
@@ -18,7 +19,11 @@ function pickChallenge(masteredIds, playerLevel) {
   const pool = getPool(masteredIds, playerLevel);
   const unseen = pool.filter(c => !masteredIds.includes(c.id));
   const source = unseen.length > 0 ? unseen : pool;
-  return source[Math.floor(Math.random() * source.length)];
+  const picked = source[Math.floor(Math.random() * source.length)];
+  // Shuffle option order on every pick — the authored content bank has
+  // ~71% of correct answers at index 1, which creates a very noticeable
+  // "B bias" if we render the options as-written.
+  return shuffleOptionsPreservingAnswer(picked);
 }
 
 export default function GrammarDojo({ state, awardXP, awardGems, dungeonsCleared = 0, recordWrong, updateQuestProgress }) {

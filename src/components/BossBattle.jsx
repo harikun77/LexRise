@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { generateBossQuestions, getCurrentBoss } from '../data/bossBattles';
+import { shuffleOptionsPreservingAnswer } from '../utils/shuffle';
 
 const TOTAL_TIME   = 180; // 3 minutes in seconds
 const QUESTION_COUNT = 10;
@@ -45,7 +46,7 @@ export default function BossBattle({ state, awardXP, recordWrong, updateQuestPro
   }, [phase]);
 
   const startBattle = useCallback(() => {
-    setQuestions(generateBossQuestions(QUESTION_COUNT));
+    setQuestions(generateBossQuestions(QUESTION_COUNT).map(shuffleOptionsPreservingAnswer));
     setQIdx(0);
     setSelected(null);
     setFeedback(null);

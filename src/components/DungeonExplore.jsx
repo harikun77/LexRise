@@ -27,6 +27,7 @@ import { VOCAB_WORDS, GRAMMAR_CHALLENGES } from '../data/index';
 import { ALL_PASSAGES } from '../data/reading/index';
 import { POTIONS_MAP } from '../data/rpg/items';
 import { generateMap, getAvailableNodes, getNodeDifficulty, generateRunSeed, getNumPaths, getNumRows, NODE_TYPES } from '../utils/mapGen';
+import { shuffleInPlace, shuffled, shuffleOptionsPreservingAnswer } from '../utils/shuffle';
 
 // ── Daily focus: cycles vocab → grammar → reading each day ────
 const DAILY_FOCUS = (() => {
@@ -60,49 +61,11 @@ function buildPool(dungeon) {
   return shuffleInPlace(pool);
 }
 
-// ── Unbiased shuffle (Fisher-Yates) ───────────────────────────
-// `arr.sort(() => Math.random() - 0.5)` is NOT a uniform shuffle: V8's
-// TimSort compares pairs unevenly and produces biased results — elements
-// tend to stay near their original positions. We were using that for both
-// the question pool and per-encounter picks, which made the same answer
-// slot (commonly B/index-1) surface more often than the others. This
-// helper performs a proper Fisher-Yates shuffle with uniform distribution.
-function shuffleInPlace(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-function shuffled(arr) {
-  return shuffleInPlace([...arr]);
-}
-
-// ── Revenge shuffling ─────────────────────────────────────────
-// When a question comes back as a "revenge" question after a wrong answer,
-// we want to present the SAME question with the SAME options but in a new
-// order, so the player can't just memorize position B/D. The answer index
-// is remapped to follow the correct option to its new slot.
-//
-// This same helper is also used at pool-build time to randomize the
-// starting option order — because SAT / vocab content authors often
-// cluster the correct answer at a specific index (the classic "B bias").
-// Shuffling every question's options on pickup removes that bias entirely.
-function shuffleOptionsPreservingAnswer(q) {
-  if (!Array.isArray(q.options) || q.options.length < 2) return q;
-  const idxs = q.options.map((_, i) => i);
-  shuffleInPlace(idxs);
-  const unchanged = idxs.every((v, i) => v === i);
-  if (unchanged) {
-    const a = 0;
-    const b = 1 + Math.floor(Math.random() * (idxs.length - 1));
-    [idxs[a], idxs[b]] = [idxs[b], idxs[a]];
-  }
-  const newOptions = idxs.map(i => q.options[i]);
-  const newAnswer  = idxs.indexOf(q.answer);
-  return { ...q, options: newOptions, answer: newAnswer };
-}
+// ── Unbiased shuffle helpers live in utils/shuffle.js ─────────
+// We import shuffleInPlace, shuffled, and shuffleOptionsPreservingAnswer
+// from there so VocabForge, GrammarDojo, ReadingCitadel, BossBattle, and
+// DungeonExplore all use the same implementation (and in particular the
+// same "B-bias" correction — 71% of authored answers land at index 1).
 
 function pickQuestions(pool, n, usedIds) {
   const fresh = pool.filter(q => !usedIds.has(q.id));
@@ -728,8 +691,8 @@ export default function DungeonExplore({
       // We shuffle the options so the next appearance won't reward positional
       // memory — the user must recognize the content.
       if (!isRevenge) {
-        const shuffled = shuffleOptionsPreservingAnswer(q);
-        revengeQueueRef.current.push({ ...shuffled, _revenge: true });
+        const revenge = shuffleOptionsPreservingAnswer(q);
+        revengeQueueRef.current.push({ ...revenge, _revenge: true });
         // Track weak category for boss fights
         wrongCategoriesRef.current[q.qtype] = (wrongCategoriesRef.current[q.qtype] || 0) + 1;
       }

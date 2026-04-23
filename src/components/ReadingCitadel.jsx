@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { ALL_PASSAGES } from '../data/reading/index';
 import { computeStudyReward } from '../utils/studyRewards';
+import { shuffleOptionsPreservingAnswer } from '../utils/shuffle';
 
 const TIER_NAMES  = { 1: '8th Grade', 2: '9th-10th Grade', 3: 'SAT Level' };
 const TIER_COLORS = {
@@ -29,7 +30,15 @@ function pickPassage(masteredQuestionIds, playerLevel) {
     p.questions.some(q => !masteredQuestionIds.includes(q.id))
   );
   const source = partial.length > 0 ? partial : pool;
-  return source[Math.floor(Math.random() * source.length)];
+  const picked = source[Math.floor(Math.random() * source.length)];
+  if (!picked) return picked;
+  // Shuffle each question's option order to kill the "B bias" present in
+  // the source content. The passage text is unchanged — only per-question
+  // option slots are rearranged with answer indices remapped.
+  return {
+    ...picked,
+    questions: picked.questions.map(shuffleOptionsPreservingAnswer),
+  };
 }
 
 export default function ReadingCitadel({ state, awardXP, awardGems, dungeonsCleared = 0, recordWrong, updateQuestProgress }) {

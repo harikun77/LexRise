@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { VOCAB_WORDS } from '../data/index';
 import { pickWordSM2, getScheduleSummary } from '../utils/sm2';
 import { computeStudyReward } from '../utils/studyRewards';
+import { shuffleOptionsPreservingAnswer } from '../utils/shuffle';
 
 const TIER_NAMES = { 1: '8th Grade', 2: '9th-10th Grade', 3: 'SAT Level' };
 const TIER_COLORS = {
@@ -19,7 +20,10 @@ export default function VocabForge({ state, awardXP, awardGems, dungeonsCleared 
   const { player, skills, vocabSM2 = {} } = state;
   const masteredIds = skills.vocabulary.masteredIds;
   const pool = getAvailableWords(masteredIds, player.level);
-  const [question, setQuestion]   = useState(() => pickWordSM2(pool, vocabSM2) || pool[0]);
+  const [question, setQuestion]   = useState(() => {
+    const w = pickWordSM2(pool, vocabSM2) || pool[0];
+    return shuffleOptionsPreservingAnswer(w);
+  });
   const [selected, setSelected] = useState(null);
   const [feedback, setFeedback] = useState(null); // 'correct' | 'wrong'
   const [showExplanation, setShowExplanation] = useState(false);
@@ -35,7 +39,8 @@ export default function VocabForge({ state, awardXP, awardGems, dungeonsCleared 
     setShowExplanation(false);
     setLastReward(null);
     const freshPool = getAvailableWords(skills.vocabulary.masteredIds, player.level);
-    setQuestion(pickWordSM2(freshPool, state.vocabSM2 || {}) || freshPool[0]);
+    const w = pickWordSM2(freshPool, state.vocabSM2 || {}) || freshPool[0];
+    setQuestion(shuffleOptionsPreservingAnswer(w));
     setQuestionCount(c => c + 1);
   }, [skills.vocabulary.masteredIds, player.level, state.vocabSM2]);
 
