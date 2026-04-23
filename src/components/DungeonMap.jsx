@@ -129,21 +129,41 @@ export default function DungeonMap({
   playerHp,
   playerMaxHp,
 }) {
-  const scrollRef = useRef(null);
-  const [screenW, setScreenW] = useState(() => window.innerWidth || 390);
+  const scrollRef    = useRef(null);
+  const containerRef = useRef(null);
+  // Track the actual rendered width of the scroll container so the SVG
+  // viewBox matches what the user sees (ResizeObserver → crisp nodes at any
+  // container width: phone, tablet, desktop).
+  const [boardW, setBoardW] = useState(() => {
+    if (typeof window === 'undefined') return 390;
+    return window.innerWidth || 390;
+  });
 
-  useEffect(() => { setScreenW(window.innerWidth || 390); }, []);
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const el = containerRef.current;
+    const update = () => setBoardW(Math.max(el.clientWidth || 390, 320));
+    update();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', update);
+      return () => window.removeEventListener('resize', update);
+    }
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const visited  = new Set(visitedIds);
   const available = new Set(availableIds);
 
   const { nodes, rows, cols } = map;
-  const lyt    = layout(cols, screenW);
+  const lyt    = layout(cols, boardW);
   const height = svgH(rows);
 
-  // Node square size scales with column width, clamped 40–54 px
-  const NS = Math.max(40, Math.min(54, Math.floor(lyt.colStep * 0.70)));
-  const BOSS_NS = NS + 12;
+  // Node square size scales with column width, clamped 44–68 px (bumped up
+  // from 40–54 so nodes feel substantial on wider screens).
+  const NS = Math.max(44, Math.min(68, Math.floor(lyt.colStep * 0.70)));
+  const BOSS_NS = NS + 14;
 
   // Auto-scroll to current node
   useEffect(() => {
@@ -154,12 +174,24 @@ export default function DungeonMap({
     scrollRef.current.scrollTop = target - scrollRef.current.clientHeight / 2 + 24;
   }, [currentId, height, rows, nodes]);
 
+  // State priority:
+  //   visited  — vanquished; gray + ✓ (wins over "current" so a just-finished
+  //              node never keeps pulsing as if still active)
+  //   current  — player's position marker (ONLY when not yet visited, e.g.
+  //              briefly before markNodeComplete runs)
+  //   available — next legal choices (pulsing glow)
+  //   locked   — anything else; dimmed + 🔒
   function stateOf(id) {
-    if (id === currentId)   return 'current';
     if (visited.has(id))    return 'visited';
+    if (id === currentId)   return 'current';
     if (available.has(id))  return 'available';
     return 'locked';
   }
+
+  // The currentId node is almost always also in visitedIds (set at the same
+  // time by markNodeComplete). We still want a visible "you are here" marker,
+  // so we render a small pin on top of the visited node.
+  const playerPinId = currentId && nodes[currentId] ? currentId : null;
 
   const lines   = [];
   const nodeEls = [];
@@ -183,8 +215,13 @@ export default function DungeonMap({
       if (!child) return;
       const cx = colX(child.col, lyt);
       const cy = rowY(child.row, rows);
-      const onPath = visited.has(node.id) && visited.has(childId);
-      const isNextAvail = available.has(childId) && visited.has(node.id);
+      const onPath       = visited.has(node.id) && visited.has(childId);
+      const isNextAvail  = available.has(childId) && visited.has(node.id);
+      // A line is to a locked branch when the parent is visited but the child
+      // is neither visited nor available — i.e., the player committed to the
+      // other side of a fork. Render it very dim so players can see the
+      // abandoned branch but understand it's not clickable.
+      const isLocked     = visited.has(node.id) && !visited.has(childId) && !available.has(childId);
 
       lines.push(
         <line key={`ln-${node.id}-${childId}`}
@@ -192,25 +229,29 @@ export default function DungeonMap({
           stroke={
             isNextAvail ? NODE_BORDER[child.type] ?? '#fff'
             : onPath    ? 'rgba(255,255,255,0.5)'
+            : isLocked  ? 'rgba(100,116,139,0.18)'
             :              'rgba(255,255,255,0.18)'
           }
           strokeWidth={isNextAvail ? 2.5 : onPath ? 2 : 1.2}
+          strokeDasharray={isLocked ? '3,4' : undefined}
           strokeLinecap="round"
         />
       );
     });
 
     // ── Node ─────────────────────────────────────────────────
-    // Border colour & width by state
-    const borderColor = isLocked  ? '#2d3748'
-                      : isVisited ? '#4a5568'
+    // Border colour & width by state. Visited nodes now get a stronger
+    // "completed" look (darker fill, cooler border, slightly lower opacity)
+    // so a just-vanquished node visually flips from pulsing → grayed.
+    const borderColor = isLocked  ? '#1f2937'
+                      : isVisited ? '#475569'
                       : (isAvail || isCurrent) ? NODE_BORDER[node.type] ?? '#fff'
                       : NODE_BORDER[node.type];
     const borderW  = isCurrent ? 3.5 : isAvail ? 3 : isVisited ? 1.5 : 1;
-    const bgColor  = isLocked  ? '#0f172a'
-                   : isVisited ? '#1e2433'
+    const bgColor  = isLocked  ? '#0b1220'
+                   : isVisited ? '#111827'
                    : NODE_BG[node.type] ?? '#0f172a';
-    const opacity  = isLocked ? 0.4 : isVisited ? 0.75 : 1;
+    const opacity  = isLocked ? 0.35 : isVisited ? 0.55 : 1;
     const iconText = isVisited ? '✓' : isLocked ? '🔒' : NODE_TYPES[node.type]?.icon ?? '❓';
     const iconSize = isBoss ? Math.round(ns * 0.55) : Math.round(ns * 0.52);
 
@@ -350,7 +391,7 @@ export default function DungeonMap({
       </div>
 
       {/* ── Scrollable map ── */}
-      <div ref={scrollRef}
+      <div ref={(node) => { scrollRef.current = node; containerRef.current = node; }}
            className="flex-1 overflow-y-auto overflow-x-hidden"
            style={{ WebkitOverflowScrolling: 'touch', background: '#0d1f0d' }}>
         <svg
@@ -374,6 +415,30 @@ export default function DungeonMap({
           {floorLabels}
           {lines}
           {nodeEls}
+
+          {/* ── Player pin: "you are here" marker on top of the current node ── */}
+          {playerPinId && nodes[playerPinId] && (() => {
+            const pn = nodes[playerPinId];
+            const px = colX(pn.col, lyt);
+            const py = rowY(pn.row, rows);
+            const isBoss = pn.type === 'boss';
+            const ns = isBoss ? BOSS_NS : NS;
+            const pinY = py - ns / 2 - 16;
+            return (
+              <g key="player-pin" aria-label="Your current position">
+                <circle cx={px} cy={pinY} r={9}
+                        fill="#fbbf24" stroke="#fff" strokeWidth={2}>
+                  <animate attributeName="r" values="9;11;9" dur="1.4s" repeatCount="indefinite" />
+                </circle>
+                <text x={px} y={pinY + 3}
+                      textAnchor="middle" dominantBaseline="middle"
+                      fontSize={11} fontWeight="900" fill="#0a1a0a"
+                      style={{ userSelect: 'none', pointerEvents: 'none' }}>
+                  ★
+                </text>
+              </g>
+            );
+          })()}
         </svg>
       </div>
 

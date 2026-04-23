@@ -32,10 +32,12 @@ export default function App() {
     exportSave,
     importSave,
     awardXP,
+    awardGems,
     recordWrong,
     updateQuestProgress,
     xpToNextLevel,
     xpPercent,
+    dungeonsCleared,
     // RPG
     rpgStats,
     equippedWeaponId,
@@ -60,6 +62,23 @@ export default function App() {
 
   const needsName = state.player.name === 'Scholar';
 
+  // ── Dungeon lock ────────────────────────────────────────────
+  // When an active dungeon run exists, the player is committed — they
+  // cannot leave the Dungeon view via the bottom nav or header shortcuts
+  // until they either finish or abandon the run.
+  const navLocked = state.activeDungeon != null;
+
+  // Defensive: if something put the view out of sync with lock state
+  // (e.g., restored save with activeDungeon), force view back to 'dungeon'.
+  useEffect(() => {
+    if (navLocked && view !== 'dungeon') setView('dungeon');
+  }, [navLocked, view]);
+
+  const handleNavigate = useCallback((dest) => {
+    if (navLocked && dest !== 'dungeon') return; // swallow nav attempts
+    setView(dest);
+  }, [navLocked]);
+
   return (
     <div className="bg-gray-950" style={{ minHeight: '100dvh' }}>
       {needsName && <NameSetupModal onSave={setPlayerName} />}
@@ -69,8 +88,9 @@ export default function App() {
         state={state}
         xpPercent={xpPercent}
         xpToNextLevel={xpToNextLevel}
-        onNavigate={setView}
+        onNavigate={handleNavigate}
         view={view}
+        locked={navLocked}
       />
 
       {/* Extra bottom padding so content never hides behind the fixed bottom nav */}
@@ -91,6 +111,8 @@ export default function App() {
           <VocabForge
             state={state}
             awardXP={awardXP}
+            awardGems={awardGems}
+            dungeonsCleared={dungeonsCleared}
             recordWrong={recordWrong}
             updateQuestProgress={updateQuestProgress}
             updateVocabSM2={updateVocabSM2}
@@ -100,6 +122,8 @@ export default function App() {
           <GrammarDojo
             state={state}
             awardXP={awardXP}
+            awardGems={awardGems}
+            dungeonsCleared={dungeonsCleared}
             recordWrong={recordWrong}
             updateQuestProgress={updateQuestProgress}
           />
@@ -108,6 +132,8 @@ export default function App() {
           <ReadingCitadel
             state={state}
             awardXP={awardXP}
+            awardGems={awardGems}
+            dungeonsCleared={dungeonsCleared}
             recordWrong={recordWrong}
             updateQuestProgress={updateQuestProgress}
           />
@@ -183,7 +209,7 @@ export default function App() {
       <InstallBanner />
 
       {/* Sticky bottom nav — always visible */}
-      <BottomNav view={view} onNavigate={setView} />
+      <BottomNav view={view} onNavigate={handleNavigate} locked={navLocked} />
     </div>
   );
 }

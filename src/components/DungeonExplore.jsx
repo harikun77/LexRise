@@ -21,7 +21,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   DUNGEONS, getDungeon, getVisibleDungeons, isDungeonUnlocked,
-  getDungeonQuestionConfig, pickDungeonEnemy,
+  getDungeonQuestionConfig, pickDungeonEnemy, checkStudyGate,
 } from '../data/rpg/dungeons';
 import { VOCAB_WORDS, GRAMMAR_CHALLENGES } from '../data/index';
 import { ALL_PASSAGES } from '../data/reading/index';
@@ -57,13 +57,59 @@ function buildPool(dungeon) {
       p.questions.forEach(q => pool.push({ ...q, qtype: 'reading', passage: snippet, passageTitle: p.title }));
     });
   }
-  return pool.sort(() => Math.random() - 0.5);
+  return shuffleInPlace(pool);
+}
+
+// ── Unbiased shuffle (Fisher-Yates) ───────────────────────────
+// `arr.sort(() => Math.random() - 0.5)` is NOT a uniform shuffle: V8's
+// TimSort compares pairs unevenly and produces biased results — elements
+// tend to stay near their original positions. We were using that for both
+// the question pool and per-encounter picks, which made the same answer
+// slot (commonly B/index-1) surface more often than the others. This
+// helper performs a proper Fisher-Yates shuffle with uniform distribution.
+function shuffleInPlace(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function shuffled(arr) {
+  return shuffleInPlace([...arr]);
+}
+
+// ── Revenge shuffling ─────────────────────────────────────────
+// When a question comes back as a "revenge" question after a wrong answer,
+// we want to present the SAME question with the SAME options but in a new
+// order, so the player can't just memorize position B/D. The answer index
+// is remapped to follow the correct option to its new slot.
+//
+// This same helper is also used at pool-build time to randomize the
+// starting option order — because SAT / vocab content authors often
+// cluster the correct answer at a specific index (the classic "B bias").
+// Shuffling every question's options on pickup removes that bias entirely.
+function shuffleOptionsPreservingAnswer(q) {
+  if (!Array.isArray(q.options) || q.options.length < 2) return q;
+  const idxs = q.options.map((_, i) => i);
+  shuffleInPlace(idxs);
+  const unchanged = idxs.every((v, i) => v === i);
+  if (unchanged) {
+    const a = 0;
+    const b = 1 + Math.floor(Math.random() * (idxs.length - 1));
+    [idxs[a], idxs[b]] = [idxs[b], idxs[a]];
+  }
+  const newOptions = idxs.map(i => q.options[i]);
+  const newAnswer  = idxs.indexOf(q.answer);
+  return { ...q, options: newOptions, answer: newAnswer };
 }
 
 function pickQuestions(pool, n, usedIds) {
   const fresh = pool.filter(q => !usedIds.has(q.id));
   const src = fresh.length >= n ? fresh : pool;
-  return [...src].sort(() => Math.random() - 0.5).slice(0, n);
+  // Unbiased Fisher-Yates pick, then shuffle each question's options so the
+  // correct-answer index is uniform across A/B/C/D.
+  return shuffled(src).slice(0, n).map(shuffleOptionsPreservingAnswer);
 }
 
 function encounterLength(enemy, difficulty) {
@@ -92,17 +138,17 @@ function HpBar({ current, max, label }) {
 
 // ── Dungeon Select ────────────────────────────────────────────
 function DungeonSelectScreen({ state, rpgStats, onEnter, onBack }) {
-  const { dungeonProgress = {} } = state;
+  const { dungeonProgress = {}, skills } = state;
   const playerLevel = state.player.level;
   const visible = getVisibleDungeons(dungeonProgress);
   const toShow = visible.length ? visible : [DUNGEONS[0]];
 
   function statusOf(d) {
     const p = dungeonProgress[d.id];
-    if (!p) return isDungeonUnlocked(d, dungeonProgress, playerLevel) ? 'unlocked' : 'locked';
+    if (!p) return isDungeonUnlocked(d, dungeonProgress, playerLevel, skills) ? 'unlocked' : 'locked';
     if (p.bossDefeated) return 'completed';
     if (p.floorsCleared > 0) return 'in_progress';
-    return isDungeonUnlocked(d, dungeonProgress, playerLevel) ? 'unlocked' : 'locked';
+    return isDungeonUnlocked(d, dungeonProgress, playerLevel, skills) ? 'unlocked' : 'locked';
   }
 
   return (
@@ -139,7 +185,16 @@ function DungeonSelectScreen({ state, rpgStats, onEnter, onBack }) {
         {toShow.map(d => {
           const status = statusOf(d);
           const locked = status === 'locked';
+          const completed = status === 'completed';
           const prog   = dungeonProgress[d.id];
+          // Run the gate even when the dungeon is already unlocked so we
+          // can still show the progress indicator. It's cheap.
+          const gate = checkStudyGate(d, skills);
+          // Distinguish "locked by study gate" from "locked by player level"
+          // so we can render the right hint.
+          const blockedByStudy = locked && gate && gate.requirements.length > 0 && !gate.met
+            && playerLevel >= d.requiredLevel
+            && (!d.requiredDungeonId || dungeonProgress[d.requiredDungeonId]?.bossDefeated);
 
           return (
             <button
@@ -149,7 +204,9 @@ function DungeonSelectScreen({ state, rpgStats, onEnter, onBack }) {
               className={`w-full text-left rounded-xl border p-4 transition-all ${
                 locked
                   ? 'bg-gray-900/40 border-gray-700/40 opacity-50 cursor-not-allowed'
-                  : `bg-gradient-to-br ${d.bgGradient} ${d.borderColor} card-hover btn-press`
+                  : completed
+                    ? `bg-gradient-to-br ${d.bgGradient} ${d.borderColor} opacity-90 card-hover btn-press`
+                    : `bg-gradient-to-br ${d.bgGradient} ${d.borderColor} card-hover btn-press`
               }`}
             >
               <div className="flex items-start gap-4">
@@ -158,7 +215,8 @@ function DungeonSelectScreen({ state, rpgStats, onEnter, onBack }) {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-white text-sm">{d.name}</span>
                     {d.isDLC && <span className="text-xs bg-yellow-900/60 text-yellow-300 border border-yellow-700/50 px-2 py-0.5 rounded-full">DLC</span>}
-                    {status === 'completed' && <span className="text-xs text-green-400 font-bold">✅ Cleared</span>}
+                    {completed && <span className="text-xs text-green-400 font-bold">✅ Cleared</span>}
+                    {prog?.runCount > 1 && <span className="text-[10px] text-gray-500">· {prog.runCount} runs</span>}
                   </div>
                   <div className="text-xs text-gray-400 mt-0.5">{d.subtitle}</div>
                   <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
@@ -167,10 +225,69 @@ function DungeonSelectScreen({ state, rpgStats, onEnter, onBack }) {
                     <span className="text-amber-400">+{d.completionXP} XP</span>
                     <span className="text-cyan-400">+{d.completionGems} 💎</span>
                   </div>
-                  {locked && <div className="text-xs text-amber-400 mt-1">🔒 Clear previous dungeon first</div>}
+
+                  {locked && !blockedByStudy && (
+                    <div className="text-xs text-amber-400 mt-1">
+                      🔒 {playerLevel < d.requiredLevel
+                        ? `Reach Level ${d.requiredLevel} first`
+                        : 'Clear the previous dungeon first'}
+                    </div>
+                  )}
+
+                  {blockedByStudy && (
+                    <div className="mt-2 p-2 rounded-lg bg-indigo-950/40 border border-indigo-800/50">
+                      <div className="text-[11px] font-bold text-indigo-300 uppercase tracking-wider mb-1.5">
+                        📚 Study Mastery Required
+                      </div>
+                      <div className="space-y-1">
+                        {gate.requirements.map(r => (
+                          <div key={r.category} className="flex items-center gap-2 text-[11px]">
+                            <span className={r.met ? 'text-green-400' : 'text-amber-400'}>
+                              {r.met ? '✓' : '○'}
+                            </span>
+                            <span className="text-gray-300 flex-1">
+                              {r.label}
+                            </span>
+                            <span className={`font-mono ${r.met ? 'text-green-400' : 'text-gray-400'}`}>
+                              {r.current}/{r.target}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-1.5 text-[10px] text-gray-500 italic">
+                        Study via the 📚 Study tab to unlock.
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Even unlocked dungeons can show a tiny gate progress
+                      summary so users see what's coming for the next tier. */}
+                  {!locked && gate && gate.tierRequired && !gate.met && (
+                    <div className="mt-1 text-[10px] text-indigo-400/70">
+                      {gate.requirements.filter(r => r.met).length}/{gate.requirements.length} study requirements met
+                    </div>
+                  )}
                 </div>
+
+                {/* Run-again chip for cleared dungeons — shown on the right
+                    side so the whole card stays clickable but the action is
+                    unambiguous: "yes, re-enter this one". Farm XP is
+                    automatically scaled down by getDungeonFarmMultiplier. */}
+                {completed && (
+                  <div className="flex-shrink-0 self-center flex flex-col items-center">
+                    <div className="px-3 py-2 rounded-lg bg-indigo-900/60 border border-indigo-600/70 text-indigo-200 text-xs font-bold flex items-center gap-1 whitespace-nowrap">
+                      🔁 Run Again →
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-1">farm mode</div>
+                  </div>
+                )}
               </div>
-              {!locked && <div className="mt-2 text-xs text-gray-500 italic leading-relaxed">{d.tipText}</div>}
+              {!locked && !completed && <div className="mt-2 text-xs text-gray-500 italic leading-relaxed">{d.tipText}</div>}
+              {completed && (
+                <div className="mt-2 text-xs text-green-400/70 italic leading-relaxed">
+                  ✨ Cleared! Re-running gives reduced XP but keeps your gear and unlocks farm mode.
+                </div>
+              )}
             </button>
           );
         })}
@@ -243,7 +360,9 @@ function CampScreen({ rpgStats, vocabSM2 = {}, vocabWords = [], onHeal, onContin
   const hasDue = dueWords.length >= 2;
 
   function startReview() {
-    setWords(dueWords);
+    // Shuffle the option order per word so review doesn't reward positional
+    // memory from the pool's original authoring bias.
+    setWords(dueWords.map(shuffleOptionsPreservingAnswer));
     setWIdx(0);
     setSelected(null);
     setFeedback(null);
@@ -476,11 +595,12 @@ export default function DungeonExplore({
   const curHp    = rpgStats.hp;
   const maxHp    = rpgStats.maxHp;
 
-  // ── Available nodes (derived from map + visited) ────────────
+  // ── Available nodes (derived from map + visited + current) ──
+  // Passing currentNodeId locks alternate forks once the player commits.
   const availableIds = useMemo(() => {
     if (!activeMap) return [];
-    return getAvailableNodes(activeMap, visitedIds);
-  }, [activeMap, visitedIds]);
+    return getAvailableNodes(activeMap, visitedIds, currentNodeId);
+  }, [activeMap, visitedIds, currentNodeId]);
 
   // ── 1. Enter dungeon (after confirm) ──────────────────────
   const enterDungeon = useCallback((id) => {
@@ -605,8 +725,11 @@ export default function DungeonExplore({
     } else {
       correctSinceRevengeRef.current = 0;
       // Queue wrong questions for revenge (skip if already a revenge question)
+      // We shuffle the options so the next appearance won't reward positional
+      // memory — the user must recognize the content.
       if (!isRevenge) {
-        revengeQueueRef.current.push({ ...q, _revenge: true });
+        const shuffled = shuffleOptionsPreservingAnswer(q);
+        revengeQueueRef.current.push({ ...shuffled, _revenge: true });
         // Track weak category for boss fights
         wrongCategoriesRef.current[q.qtype] = (wrongCategoriesRef.current[q.qtype] || 0) + 1;
       }
@@ -708,7 +831,12 @@ export default function DungeonExplore({
   // ── MAP ───────────────────────────────────────────────────
   if (phase === 'map') {
     return (
-      <div className="max-w-2xl mx-auto flex flex-col animate-fade-in"
+      // Full-width (no max-w constraint) so the SVG map uses the real viewport.
+      // Previously `max-w-2xl` clamped the container to 672px while the inner
+      // <svg width="100%" viewBox="0 0 svgW ..."> kept a svgW sized for the
+      // full window → the browser scaled everything down, producing a
+      // "squished" node map with tiny nodes.
+      <div className="w-full flex flex-col animate-fade-in"
            style={{ height: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 120px)' }}>
         <DungeonMap
           map={activeMap}
@@ -1083,12 +1211,17 @@ export default function DungeonExplore({
               </div>
             </div>
           )}
-          <div className="flex gap-3">
-            <button onClick={() => { setPhase('select'); setDungeonId(null); setActiveMap(null); setVisitedIds([]); }}
-              className="flex-1 py-4 rounded-xl bg-gradient-to-r from-indigo-700 to-purple-600 text-white font-bold transition-all btn-press">
-              ⚔️ Run Again
-            </button>
-            <button onClick={onBack} className="px-6 py-4 rounded-xl bg-gray-800 border border-gray-700 text-white font-bold transition-all btn-press">🏠</button>
+          {/* Primary action: always return to town. Previously the primary
+              CTA was "Run Again", which users could mis-tap and immediately
+              lose their just-earned completion state context. The select
+              screen now exposes a clear Run Again chip on cleared dungeons. */}
+          <button
+            onClick={() => { setPhase('select'); setDungeonId(null); setActiveMap(null); setVisitedIds([]); setCurrentNodeId(null); onBack?.(); }}
+            className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-500 text-gray-900 font-black text-lg transition-all btn-press">
+            🏠 Return to Town
+          </button>
+          <div className="mt-2 text-[11px] text-gray-500 text-center">
+            You can run this dungeon again from the dungeon list.
           </div>
         </div>
       </div>

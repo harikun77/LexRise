@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getShopStock, WEAPONS_MAP, ARMOR_MAP, getSellPrice } from '../data/rpg/items';
+import { getShopStock, WEAPONS_MAP, ARMOR_MAP } from '../data/rpg/items';
 import { FLOOR_INFO } from '../data/rpg/enemies';
 import { ItemSprite } from './EnemySprite';
 
@@ -82,20 +82,19 @@ function ShopItem({ item, gems, isOwned, isEquipped, onBuy, canAfford }) {
               <span className={`text-sm font-bold ${canAfford ? 'text-cyan-400' : 'text-red-400'}`}>
                 💎 {item.price}
               </span>
-              {item.price > 0 && (
-                <span className="text-xs text-gray-500">(sell: {getSellPrice(item)})</span>
-              )}
             </div>
             <button
               onClick={() => onBuy(item.id)}
-              disabled={!canAfford}
+              disabled={!canAfford || isOwned}
               className={`py-1.5 px-4 rounded-lg text-xs font-bold transition-all btn-press ${
-                canAfford
-                  ? 'bg-gradient-to-r from-cyan-700 to-cyan-600 hover:from-cyan-600 hover:to-cyan-500 text-white'
-                  : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                isOwned
+                  ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
+                  : canAfford
+                    ? 'bg-gradient-to-r from-cyan-700 to-cyan-600 hover:from-cyan-600 hover:to-cyan-500 text-white'
+                    : 'bg-gray-700 text-gray-500 cursor-not-allowed'
               }`}
             >
-              {canAfford ? 'Buy' : 'Need 💎' + item.price}
+              {isOwned ? 'Owned' : canAfford ? 'Buy' : 'Need 💎' + item.price}
             </button>
           </div>
         </div>
@@ -148,9 +147,18 @@ export default function Shop({ state, buyItem, equippedWeaponId, equippedArmorId
       </div>
 
       {/* Floor notice */}
-      <div className="bg-gray-800/40 border border-gray-700/50 rounded-xl p-3 mb-5 text-xs text-gray-400">
+      <div className="bg-gray-800/40 border border-gray-700/50 rounded-xl p-3 mb-3 text-xs text-gray-400">
         🏪 Stock expands as you reach deeper floors. Deeper floors unlock better weapons and armor.
-        <span className="text-amber-400 ml-1">Sell price is always 50% of buy price.</span>
+      </div>
+
+      {/* Where to sell banner */}
+      <div className="bg-indigo-950/40 border border-indigo-800/50 rounded-xl p-3 mb-5 text-xs text-indigo-300 flex items-start gap-2">
+        <span className="text-base flex-shrink-0">💡</span>
+        <div>
+          Want to <strong>sell</strong> unused gear? Go to the
+          <span className="mx-1 px-1.5 py-0.5 rounded bg-indigo-900/60 border border-indigo-700/50 font-bold">🎒 Bag</span>
+          tab below — tap any item to sell for 50% of its buy price.
+        </div>
       </div>
 
       {/* Tabs */}
@@ -252,7 +260,6 @@ export default function Shop({ state, buyItem, equippedWeaponId, equippedArmorId
                     <div className="flex items-center justify-between mt-2">
                       <span className={`text-sm font-bold ${gems >= p.price ? 'text-cyan-400' : 'text-red-400'}`}>
                         💎 {p.price}
-                        <span className="text-xs text-gray-500 ml-1">(sell: {getSellPrice(p)})</span>
                       </span>
                       <button
                         onClick={() => buyItem(p.id)}
@@ -274,15 +281,128 @@ export default function Shop({ state, buyItem, equippedWeaponId, equippedArmorId
         </div>
       )}
 
-      {/* Tip */}
-      <div className="mt-6 bg-gray-800/40 border border-gray-700/50 rounded-xl p-4">
-        <div className="text-xs text-amber-400 font-semibold uppercase tracking-wider mb-1">💡 Strategy</div>
-        <div className="text-xs text-gray-400 leading-relaxed">
-          Enemies on B3+ <span className="text-white">hit significantly harder</span> than early floors.
-          Buy at least a <span className="text-blue-300">Chain Shirt</span> before attempting B3,
-          and stock up on <span className="text-green-300">Hi-Potions</span> before boss encounters.
-          Gems drop from every enemy you defeat.
-        </div>
+      {/* Tip — now dynamic */}
+      <StrategyTip
+        floor={floor}
+        stock={stock}
+        gems={gems}
+        equippedWeaponId={equippedWeaponId}
+        equippedArmorId={equippedArmorId}
+      />
+    </div>
+  );
+}
+
+// ── Dynamic Strategy Tip ─────────────────────────────────────
+// Previously this block hard-coded item names like "Chain Shirt" and
+// "Hi-Potions". When a user on floor 1 opened the shop, those items
+// weren't in stock yet, so the advice was useless and confusing.
+//
+// The new tip derives its recommendations from:
+//   - what's in stock on this floor (best affordable weapon / armor)
+//   - what the player already has equipped (skip if they're ahead)
+//   - what's coming next floor (so they can save up)
+//   - their gem balance (affordability-aware suggestions)
+function StrategyTip({ floor, stock, gems, equippedWeaponId, equippedArmorId }) {
+  const equippedWeapon = WEAPONS_MAP[equippedWeaponId];
+  const equippedArmor  = ARMOR_MAP[equippedArmorId];
+  const curAtk         = equippedWeapon?.atk ?? 0;
+  const curDef         = equippedArmor?.def  ?? 0;
+
+  // Best upgrade available in current stock: highest-stat item the player
+  // can realistically aim for (ignores anything weaker than what they wear).
+  const nextWeapon = stock.weapons
+    .filter(w => w.atk > curAtk)
+    .sort((a, b) => a.price - b.price)[0];
+
+  const nextArmor = stock.armor
+    .filter(a => a.def > curDef)
+    .sort((a, b) => a.price - b.price)[0];
+
+  // A nicer "aspirational" target: best item in current stock regardless of price.
+  const topArmor = stock.armor.length
+    ? stock.armor.reduce((best, a) => (a.def > (best?.def ?? 0) ? a : best), null)
+    : null;
+
+  // Preview of first meaningful item unlocked next floor.
+  const nextFloorStock = getShopStock(floor + 1);
+  const sneakPeekArmor = nextFloorStock.armor.find(
+    a => !stock.armor.some(b => b.id === a.id) && a.def > curDef
+  );
+
+  // Cheapest potion in stock — recommended for early exploration.
+  const cheapestPotion = [...stock.potions].sort((a, b) => a.price - b.price)[0];
+  const strongestPotion = [...stock.potions].sort((a, b) => b.price - a.price)[0];
+
+  const lines = [];
+
+  if (nextWeapon) {
+    const afford = gems >= nextWeapon.price;
+    lines.push(
+      <li key="weapon">
+        ⚔️ Upgrade weapon to <span className="text-white font-semibold">{nextWeapon.name}</span>{' '}
+        <span className="text-gray-500">(+{nextWeapon.atk - curAtk} ATK for 💎{nextWeapon.price})</span>
+        {!afford && gems > 0 && (
+          <span className="text-amber-400 ml-1">— need 💎{nextWeapon.price - gems} more</span>
+        )}
+      </li>
+    );
+  }
+
+  if (nextArmor) {
+    const afford = gems >= nextArmor.price;
+    lines.push(
+      <li key="armor">
+        🛡️ Upgrade armor to <span className="text-white font-semibold">{nextArmor.name}</span>{' '}
+        <span className="text-gray-500">(+{nextArmor.def - curDef} DEF for 💎{nextArmor.price})</span>
+        {!afford && gems > 0 && (
+          <span className="text-amber-400 ml-1">— need 💎{nextArmor.price - gems} more</span>
+        )}
+      </li>
+    );
+  }
+
+  if (!nextWeapon && !nextArmor) {
+    lines.push(
+      <li key="maxed">
+        ✨ Your current gear beats everything in this floor's shop. Clear more dungeons to unlock the next floor.
+      </li>
+    );
+  }
+
+  if (cheapestPotion) {
+    lines.push(
+      <li key="potion">
+        🧪 Stock at least 2–3 <span className="text-white font-semibold">{cheapestPotion.name}s</span>{' '}
+        <span className="text-gray-500">(💎{cheapestPotion.price} each · heals {cheapestPotion.healPercent > 0 ? 'full HP' : `+${cheapestPotion.healAmount} HP`})</span>
+        {strongestPotion && strongestPotion.id !== cheapestPotion.id && (
+          <> — or save up for a <span className="text-white font-semibold">{strongestPotion.name}</span>{' '}
+            <span className="text-gray-500">(💎{strongestPotion.price})</span> before boss encounters.</>
+        )}
+      </li>
+    );
+  }
+
+  if (sneakPeekArmor) {
+    lines.push(
+      <li key="peek" className="text-indigo-300">
+        🔮 Unlocks next floor: <span className="font-semibold">{sneakPeekArmor.name}</span>{' '}
+        <span className="text-gray-500">(DEF {sneakPeekArmor.def} · 💎{sneakPeekArmor.price})</span>
+        {' '}— worth saving for.
+      </li>
+    );
+  }
+
+  return (
+    <div className="mt-6 bg-gray-800/40 border border-gray-700/50 rounded-xl p-4">
+      <div className="text-xs text-amber-400 font-semibold uppercase tracking-wider mb-2">💡 Strategy — Floor {floor}</div>
+      <ul className="text-xs text-gray-300 leading-relaxed space-y-1.5 list-none">
+        {lines}
+      </ul>
+      <div className="mt-3 pt-3 border-t border-gray-700/40 text-[11px] text-gray-500 leading-relaxed">
+        Gems drop from every enemy defeated. Wrong answers deal{' '}
+        <span className="text-red-400">damage = enemy ATK − your DEF</span>, so armor
+        directly reduces the HP you lose per mistake.
       </div>
     </div>
   );

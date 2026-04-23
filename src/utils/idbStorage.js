@@ -85,10 +85,12 @@ export async function requestPersistentStorage() {
   if (!navigator?.storage?.persist) return false;
   try {
     const granted = await navigator.storage.persist();
-    if (granted) {
-      console.log('[LexRise] Persistent storage granted ✓');
-    } else {
-      console.log('[LexRise] Persistent storage not granted — using fallback');
+    if (import.meta.env.DEV) {
+      if (granted) {
+        console.log('[LexRise] Persistent storage granted ✓');
+      } else {
+        console.log('[LexRise] Persistent storage not granted — using fallback');
+      }
     }
     return granted;
   } catch {

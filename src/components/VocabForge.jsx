@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { VOCAB_WORDS } from '../data/index';
 import { pickWordSM2, getScheduleSummary } from '../utils/sm2';
+import { computeStudyReward } from '../utils/studyRewards';
 
 const TIER_NAMES = { 1: '8th Grade', 2: '9th-10th Grade', 3: 'SAT Level' };
 const TIER_COLORS = {
@@ -14,7 +15,7 @@ function getAvailableWords(masteredIds, playerLevel) {
   return VOCAB_WORDS.filter(w => w.tier <= tierCap);
 }
 
-export default function VocabForge({ state, awardXP, recordWrong, updateQuestProgress, updateVocabSM2 }) {
+export default function VocabForge({ state, awardXP, awardGems, dungeonsCleared = 0, recordWrong, updateQuestProgress, updateVocabSM2 }) {
   const { player, skills, vocabSM2 = {} } = state;
   const masteredIds = skills.vocabulary.masteredIds;
   const pool = getAvailableWords(masteredIds, player.level);
@@ -24,11 +25,15 @@ export default function VocabForge({ state, awardXP, recordWrong, updateQuestPro
   const [showExplanation, setShowExplanation] = useState(false);
   const [roundStreak, setRoundStreak] = useState(0);
   const [questionCount, setQuestionCount] = useState(0);
+  // Breakdown of the most recent correct answer's reward stack. Shown to
+  // the player so they can see exactly why study is paying out what it is.
+  const [lastReward, setLastReward] = useState(null);
 
   const nextQuestion = useCallback(() => {
     setSelected(null);
     setFeedback(null);
     setShowExplanation(false);
+    setLastReward(null);
     const freshPool = getAvailableWords(skills.vocabulary.masteredIds, player.level);
     setQuestion(pickWordSM2(freshPool, state.vocabSM2 || {}) || freshPool[0]);
     setQuestionCount(c => c + 1);
@@ -44,8 +49,20 @@ export default function VocabForge({ state, awardXP, recordWrong, updateQuestPro
 
     if (correct) {
       setFeedback('correct');
+      // Apply the full study-reward stack: streak bonus, daily-focus 2×,
+      // and dungeon-progression scaling. awardXP still handles level-up
+      // and the automatic floor(xp/20) gem drip; milestone gems are
+      // dropped separately via awardGems.
+      const reward = computeStudyReward({
+        baseXP:          question.xp,
+        roundStreak,
+        qtype:           'vocab',
+        dungeonsCleared,
+      });
+      setLastReward(reward);
       setRoundStreak(s => s + 1);
-      awardXP(question.xp, 'vocabulary', question.id);
+      awardXP(reward.xp, 'vocabulary', question.id);
+      if (reward.gemBonus > 0) awardGems?.(reward.gemBonus);
       updateQuestProgress('vocab');
       if (roundStreak + 1 >= 3) updateQuestProgress('streak');
       if (question.tier === 3) updateQuestProgress('tier3');
@@ -53,6 +70,7 @@ export default function VocabForge({ state, awardXP, recordWrong, updateQuestPro
     } else {
       setFeedback('wrong');
       setRoundStreak(0);
+      setLastReward(null);
       recordWrong('vocabulary');
     }
     setShowExplanation(true);
@@ -117,7 +135,16 @@ export default function VocabForge({ state, awardXP, recordWrong, updateQuestPro
               <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${TIER_COLORS[question.tier]}`}>
                 {TIER_NAMES[question.tier]}
               </span>
-              <span className="text-xs text-amber-400 font-semibold">+{question.xp} XP</span>
+              <div className="flex items-center gap-2">
+                {lastReward?.multiplier > 1 && feedback === 'correct' && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-900/60 border border-amber-600/50 text-amber-300 font-bold">
+                    ×{lastReward.multiplier.toFixed(2)}
+                  </span>
+                )}
+                <span className="text-xs text-amber-400 font-semibold">
+                  +{feedback === 'correct' && lastReward ? lastReward.xp : question.xp} XP
+                </span>
+              </div>
             </div>
 
             {/* Word */}
@@ -170,6 +197,22 @@ export default function VocabForge({ state, awardXP, recordWrong, updateQuestPro
                 </div>
                 <div className="text-xs opacity-90">
                   <strong>Definition:</strong> {question.definition}
+                </div>
+              </div>
+            )}
+
+            {/* Reward breakdown — surfaces why bonuses stacked */}
+            {feedback === 'correct' && lastReward?.bonuses?.length > 0 && (
+              <div className="mt-3 p-3 rounded-xl bg-amber-900/20 border border-amber-700/40 animate-fade-in">
+                <div className="text-[11px] font-bold text-amber-400 uppercase tracking-wider mb-1.5">
+                  Reward Breakdown
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {lastReward.bonuses.map((b, i) => (
+                    <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-gray-800/70 border border-gray-700 text-gray-200">
+                      {b.label}
+                    </span>
+                  ))}
                 </div>
               </div>
             )}

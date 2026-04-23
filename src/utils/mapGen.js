@@ -163,22 +163,35 @@ export function generateMap(seed, numPaths = 6, rows = 15) {
 
 // ── Runtime helpers ──────────────────────────────────────────
 
-/** Returns the set of node IDs that are available to visit next */
-export function getAvailableNodes(map, visitedIds) {
+/**
+ * Returns the set of node IDs the player may visit NEXT.
+ *
+ * Previous behaviour (buggy): "children of ANY visited node that are not yet
+ * visited" — this kept the alternate side of a fork reachable forever, so the
+ * user could double-back and loot both branches.
+ *
+ * New behaviour: once the player has committed to a node, only that node's
+ * direct children are selectable. Siblings of prior choices (and their whole
+ * subtrees) become permanently locked, matching Slay-the-Spire semantics.
+ *
+ *   visitedIds empty + currentId null → all row-0 start nodes
+ *   currentId set                     → children of currentId not yet visited
+ *   (legacy fallback)                 → children of the last visited node
+ */
+export function getAvailableNodes(map, visitedIds, currentId = null) {
   const visited = new Set(visitedIds);
 
-  if (visited.size === 0) {
-    // Not started: all row-0 nodes are available
+  if (!currentId && visited.size === 0) {
     return map.startCols.map(c => `r0c${c}`).filter(id => map.nodes[id]);
   }
 
-  // Available = children of any visited node that haven't been visited yet
-  const available = new Set();
-  visited.forEach(id => {
-    const node = map.nodes[id];
-    if (node) node.next.forEach(nid => { if (!visited.has(nid)) available.add(nid); });
-  });
-  return [...available];
+  // Prefer the explicit currentId; fall back to the last visited node so this
+  // function stays backward-compatible with any older call sites.
+  const frontierId = currentId ?? visitedIds[visitedIds.length - 1];
+  const frontier   = frontierId ? map.nodes[frontierId] : null;
+  if (!frontier) return [];
+
+  return frontier.next.filter(nid => !visited.has(nid));
 }
 
 /** Given the node type, return combat difficulty multipliers */

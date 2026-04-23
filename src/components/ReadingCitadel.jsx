@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { ALL_PASSAGES } from '../data/reading/index';
+import { computeStudyReward } from '../utils/studyRewards';
 
 const TIER_NAMES  = { 1: '8th Grade', 2: '9th-10th Grade', 3: 'SAT Level' };
 const TIER_COLORS = {
@@ -31,7 +32,7 @@ function pickPassage(masteredQuestionIds, playerLevel) {
   return source[Math.floor(Math.random() * source.length)];
 }
 
-export default function ReadingCitadel({ state, awardXP, recordWrong, updateQuestProgress }) {
+export default function ReadingCitadel({ state, awardXP, awardGems, dungeonsCleared = 0, recordWrong, updateQuestProgress }) {
   const { player, skills } = state;
   const masteredIds = skills.reading.masteredIds;
   const tierCap = player.level < 8 ? 1 : player.level < 15 ? 2 : 3;
@@ -44,6 +45,7 @@ export default function ReadingCitadel({ state, awardXP, recordWrong, updateQues
   const [sessionScore, setSessionScore] = useState({ correct: 0, total: 0 });
   const [passageRead, setPassageRead]   = useState(false);
   const [passageCount, setPassageCount] = useState(0);
+  const [lastReward, setLastReward]     = useState(null);
 
   const currentQ = passage?.questions[currentQIdx];
   const qTypeInfo = currentQ ? (QUESTION_TYPE_LABELS[currentQ.type] || QUESTION_TYPE_LABELS.detail) : null;
@@ -57,14 +59,23 @@ export default function ReadingCitadel({ state, awardXP, recordWrong, updateQues
     setSessionScore(s => ({ correct: s.correct + (correct ? 1 : 0), total: s.total + 1 }));
 
     if (correct) {
+      const reward = computeStudyReward({
+        baseXP:          currentQ.xp,
+        roundStreak,
+        qtype:           'reading',
+        dungeonsCleared,
+      });
+      setLastReward(reward);
       setRoundStreak(s => s + 1);
-      awardXP(currentQ.xp, 'reading', currentQ.id);
+      awardXP(reward.xp, 'reading', currentQ.id);
+      if (reward.gemBonus > 0) awardGems?.(reward.gemBonus);
       updateQuestProgress('reading');
       if (roundStreak + 1 >= 3) updateQuestProgress('streak');
       if (passage.tier === 3)   updateQuestProgress('tier3');
       updateQuestProgress('any');
     } else {
       setRoundStreak(0);
+      setLastReward(null);
       recordWrong('reading');
     }
   };
@@ -72,12 +83,14 @@ export default function ReadingCitadel({ state, awardXP, recordWrong, updateQues
   const nextQuestion = useCallback(() => {
     setSelected(null);
     setFeedback(null);
+    setLastReward(null);
     setCurrentQIdx(i => i + 1);
   }, []);
 
   const nextPassage = useCallback(() => {
     setSelected(null);
     setFeedback(null);
+    setLastReward(null);
     setCurrentQIdx(0);
     setPassageRead(false);
     setPassage(pickPassage(skills.reading.masteredIds, player.level));
@@ -203,7 +216,16 @@ export default function ReadingCitadel({ state, awardXP, recordWrong, updateQues
                       {qTypeInfo.label}
                     </span>
                   )}
-                  <span className="text-xs text-amber-400 font-semibold">+{currentQ.xp} XP</span>
+                  <div className="flex items-center gap-2">
+                    {lastReward?.multiplier > 1 && feedback === 'correct' && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-amber-900/60 border border-amber-600/50 text-amber-300 font-bold">
+                        ×{lastReward.multiplier.toFixed(2)}
+                      </span>
+                    )}
+                    <span className="text-xs text-amber-400 font-semibold">
+                      +{feedback === 'correct' && lastReward ? lastReward.xp : currentQ.xp} XP
+                    </span>
+                  </div>
                 </div>
 
                 {/* Question */}
@@ -249,6 +271,22 @@ export default function ReadingCitadel({ state, awardXP, recordWrong, updateQues
                       {feedback === 'correct' ? '✅ Correct!' : '❌ Not quite —'}
                     </div>
                     <div className="text-xs leading-relaxed opacity-90">{currentQ.explanation}</div>
+                  </div>
+                )}
+
+                {/* Reward breakdown */}
+                {feedback === 'correct' && lastReward?.bonuses?.length > 0 && (
+                  <div className="mt-3 p-3 rounded-xl bg-amber-900/20 border border-amber-700/40 animate-fade-in">
+                    <div className="text-[11px] font-bold text-amber-400 uppercase tracking-wider mb-1.5">
+                      Reward Breakdown
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {lastReward.bonuses.map((b, i) => (
+                        <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-gray-800/70 border border-gray-700 text-gray-200">
+                          {b.label}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

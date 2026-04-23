@@ -28,6 +28,11 @@
 //   • Set requiredDungeonId to the previous dungeon's id
 // ============================================================
 
+// Grammar bank — used only by checkStudyGate to map ID → tier.
+// data/index.js never imports back into rpg/, so this is safe.
+import { GRAMMAR_CHALLENGES } from '../index';
+
+
 import { ENEMIES } from './enemies';
 
 // ── Helper: get enemy object by ID ────────────────────────
@@ -503,10 +508,147 @@ export function getNextDungeon(dungeonProgress = {}) {
 }
 
 /** Check if a dungeon is unlocked for a player */
-export function isDungeonUnlocked(dungeon, dungeonProgress = {}, playerLevel = 1) {
-  if (!dungeon.requiredDungeonId) return playerLevel >= dungeon.requiredLevel;
-  const prevDone = dungeonProgress[dungeon.requiredDungeonId]?.bossDefeated === true;
-  return prevDone && playerLevel >= dungeon.requiredLevel;
+export function isDungeonUnlocked(dungeon, dungeonProgress = {}, playerLevel = 1, skills = null) {
+  if (dungeon.requiredDungeonId) {
+    const prevDone = dungeonProgress[dungeon.requiredDungeonId]?.bossDefeated === true;
+    if (!prevDone) return false;
+  }
+  if (playerLevel < dungeon.requiredLevel) return false;
+  // Study gate: higher-tier dungeons require demonstrated mastery of the
+  // previous tier's study content, so users can't just grind combat to
+  // bypass learning. Skills are optional for back-compat with older
+  // callers — a missing skills argument skips the gate.
+  if (skills) {
+    const gate = checkStudyGate(dungeon, skills);
+    if (!gate.met) return false;
+  }
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Study gate logic
+// ═══════════════════════════════════════════════════════════════
+// Higher-tier dungeons demand that the player has demonstrated
+// mastery of the previous tier's study content. This prevents a
+// combat-only grinder from blasting through content they don't
+// actually understand, and gives direct meaning to the Study branch.
+//
+// Gate tiers (derived from dungeon.order):
+//   order 1–2  → gate tier 1 (no study gate — entry level)
+//   order 3–5  → gate tier 2 (requires tier-1 mastery)
+//   order 6+   → gate tier 3 (requires tier-2 mastery)
+//
+// The required mastered-ID counts are intentionally moderate so
+// a user who studies alongside their first couple of dungeons will
+// have already cleared the gate naturally by the time they reach
+// dungeon 3.
+// ═══════════════════════════════════════════════════════════════
+
+// Gate thresholds: how many mastered IDs of the previous tier are
+// needed to unlock dungeons in the next tier bracket.
+const STUDY_GATE_REQUIREMENTS = {
+  // Unlock dungeons of order 3+ (tier-2 content)
+  2: {
+    tierRequired: 1,
+    vocab:   { target: 10, label: '8th Grade vocab mastered' },
+    grammar: { target: 5,  label: '8th Grade grammar mastered' },
+    reading: null, // reading has fewer tier-1 items, skip requirement
+  },
+  // Unlock dungeons of order 6+ (tier-3 content)
+  3: {
+    tierRequired: 2,
+    vocab:   { target: 15, label: '9th–10th Grade vocab mastered' },
+    grammar: { target: 10, label: '9th–10th Grade grammar mastered' },
+    reading: { target: 3,  label: '9th–10th Grade reading mastered' },
+  },
+};
+
+/** Which gate tier does this dungeon belong to? */
+export function getDungeonGateTier(dungeon) {
+  const order = dungeon?.order ?? 1;
+  if (order >= 6) return 3;
+  if (order >= 3) return 2;
+  return 1;
+}
+
+// ID → tier helpers. Vocab/reading embed tier in the ID prefix
+// (t{tier}v..., rp{tier}...). Grammar IDs don't, so we fall back to
+// looking up the question in GRAMMAR_CHALLENGES.
+function vocabIdTier(id) {
+  const m = /^t(\d+)v/.exec(id || '');
+  return m ? parseInt(m[1], 10) : null;
+}
+
+function readingIdTier(id) {
+  const m = /^rp(\d+)/.exec(id || '');
+  return m ? parseInt(m[1], 10) : null;
+}
+
+// Lazy grammar tier lookup. Built once from the statically-imported
+// GRAMMAR_CHALLENGES bank — the bank's id→tier mapping is constant at
+// runtime, so we only walk it once.
+let _grammarTierCache = null;
+function grammarIdTier(id) {
+  if (!_grammarTierCache) {
+    _grammarTierCache = {};
+    for (const g of GRAMMAR_CHALLENGES || []) {
+      _grammarTierCache[g.id] = g.tier;
+    }
+  }
+  return _grammarTierCache[id] ?? null;
+}
+
+/**
+ * Count mastered IDs of a given tier within a skill's masteredIds list.
+ */
+function countMasteredAtTier(skill, masteredIds, tier) {
+  if (!Array.isArray(masteredIds)) return 0;
+  let count = 0;
+  for (const id of masteredIds) {
+    if (skill === 'vocab'   && vocabIdTier(id)   === tier) count++;
+    if (skill === 'reading' && readingIdTier(id) === tier) count++;
+    if (skill === 'grammar' && grammarIdTier(id) === tier) count++;
+  }
+  return count;
+}
+
+/**
+ * Check whether a player's study mastery satisfies the gate for the
+ * given dungeon. Returns a shape suitable for rendering progress UI.
+ *
+ * @param {object} dungeon
+ * @param {object} skills  — state.skills (vocabulary/grammar/reading each with masteredIds)
+ * @returns {{
+ *   gateTier: 1|2|3,
+ *   tierRequired: number|null,
+ *   requirements: Array<{ category:'vocab'|'grammar'|'reading', label:string, current:number, target:number, met:boolean }>,
+ *   met: boolean
+ * }}
+ */
+export function checkStudyGate(dungeon, skills) {
+  const gateTier = getDungeonGateTier(dungeon);
+  const cfg = STUDY_GATE_REQUIREMENTS[gateTier];
+  if (!cfg) {
+    return { gateTier, tierRequired: null, requirements: [], met: true };
+  }
+  const requirements = [];
+  const addReq = (category, skillKey, def) => {
+    if (!def) return;
+    const ids = skills?.[skillKey]?.masteredIds ?? [];
+    const current = countMasteredAtTier(category, ids, cfg.tierRequired);
+    requirements.push({
+      category,
+      label: def.label,
+      current,
+      target: def.target,
+      met: current >= def.target,
+    });
+  };
+  addReq('vocab',   'vocabulary', cfg.vocab);
+  addReq('grammar', 'grammar',    cfg.grammar);
+  addReq('reading', 'reading',    cfg.reading);
+  const met = requirements.every(r => r.met);
+  return { gateTier, tierRequired: cfg.tierRequired, requirements, met };
 }
 
 /** Get total floors remaining in current dungeon run */

@@ -3,7 +3,12 @@ import { getPlayerClass } from '../hooks/useGameState';
 
 export function XPPopups({ popups }) {
   return (
-    <div className="fixed inset-0 pointer-events-none z-50">
+    <div
+      className="fixed inset-0 pointer-events-none z-50"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
       {popups.map(p => (
         <div
           key={p.id}
@@ -25,13 +30,20 @@ export function LevelUpModal({ level, onClose }) {
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="levelup-title"
+      aria-describedby="levelup-body"
+    >
       <div className="bg-gradient-to-br from-amber-900/90 to-yellow-900/80 border-2 border-amber-500 rounded-3xl p-8 text-center max-w-sm mx-4 animate-bounce-in glow-gold">
-        <div className="text-6xl mb-3 animate-float">{cls.emoji}</div>
+        <div className="text-6xl mb-3 animate-float" aria-hidden="true">{cls.emoji}</div>
         <div className="text-amber-400 font-bold text-sm uppercase tracking-widest mb-1">Level Up!</div>
-        <div className="text-4xl font-black text-white mb-2">Level {level}</div>
+        <div id="levelup-title" className="text-4xl font-black text-white mb-2">Level {level}</div>
         <div className="text-xl font-bold text-amber-300 mb-4">{cls.title}</div>
-        <div className="text-gray-300 text-sm">You're getting closer to SAT mastery. Keep going!</div>
+        <div id="levelup-body" className="text-gray-300 text-sm">You're getting closer to SAT mastery. Keep going!</div>
         <div className="mt-4 text-xs text-amber-500">Tap anywhere to continue</div>
       </div>
     </div>
@@ -45,10 +57,15 @@ export function QuestCompleteModal({ quest, onClose }) {
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 backdrop-blur-sm pb-8" onClick={onClose}>
+    <div
+      className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 backdrop-blur-sm pb-8"
+      onClick={onClose}
+      role="status"
+      aria-live="polite"
+    >
       <div className="bg-gradient-to-br from-green-900/90 to-teal-900/80 border border-green-500 rounded-2xl p-5 max-w-sm w-full mx-4 animate-bounce-in glow-green">
         <div className="flex items-center gap-4">
-          <div className="text-4xl">{quest.icon}</div>
+          <div className="text-4xl" aria-hidden="true">{quest.icon}</div>
           <div>
             <div className="text-green-400 font-bold text-xs uppercase tracking-wider">Quest Complete!</div>
             <div className="text-white font-bold text-lg">{quest.title}</div>
@@ -63,14 +80,21 @@ export function QuestCompleteModal({ quest, onClose }) {
 export function NameSetupModal({ onSave }) {
   const [name, setName] = useState('');
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="name-title"
+    >
       <div className="bg-gray-900 border border-gray-700 rounded-2xl p-8 max-w-sm w-full mx-4 animate-bounce-in">
         <div className="text-center mb-6">
-          <div className="text-5xl mb-3">🏰</div>
-          <h2 className="text-2xl font-black text-white">Welcome to LexRise</h2>
+          <div className="text-5xl mb-3" aria-hidden="true">🏰</div>
+          <h2 id="name-title" className="text-2xl font-black text-white">Welcome to LexRise</h2>
           <p className="text-gray-400 text-sm mt-2">Your SAT English adventure begins. What shall we call our scholar?</p>
         </div>
+        <label htmlFor="player-name-input" className="sr-only">Your name</label>
         <input
+          id="player-name-input"
           type="text"
           value={name}
           onChange={e => setName(e.target.value)}

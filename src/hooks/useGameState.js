@@ -15,6 +15,56 @@ const STORAGE_KEY = 'lexrise_save';
 
 const XP_PER_LEVEL = (level) => Math.floor(100 * Math.pow(1.3, level - 1));
 
+// ─────────────────────────────────────────────────────────────
+// applyXPGainToState — shared XP → level-up helper
+//
+// Every path that awards XP to the player (battles, scrolls, daily quests,
+// dungeon completion bonuses) routes through this function so the level-up
+// + RPG-stat-scaling logic only lives in one place.
+//
+// Previously `updateQuestProgress` and `finishDungeonRun` mutated player.xp
+// directly, so a bonus that crossed the level threshold would leave the player
+// at e.g. xp=150/xpToNext=100 without ever levelling up — the XP bar would
+// overflow past 100% and only reset when the next battle awarded XP through
+// awardXP. Now all XP goes through the same loop.
+//
+// Returns patches that should be spread into the setState return:
+//   { player: {...}, rpg?: {...}, levelsGained }
+// ─────────────────────────────────────────────────────────────
+function applyXPGainToState(state, xpGain, extraPlayerPatches = {}) {
+  let level        = state.player.level;
+  let remainingXp  = state.player.xp + xpGain;
+  let levelsGained = 0;
+  while (remainingXp >= XP_PER_LEVEL(level)) {
+    remainingXp -= XP_PER_LEVEL(level);
+    level        += 1;
+    levelsGained += 1;
+  }
+
+  const rpgPatch = levelsGained > 0
+    ? {
+        rpg: {
+          ...state.rpg,
+          maxHp:       12 + (level - 1) * 8,
+          hp:          Math.min((state.rpg?.hp ?? 12) + 5 * levelsGained, 12 + (level - 1) * 8),
+          baseAttack:  3  + (level - 1) * 2,
+          baseDefense: Math.floor((level - 1) * 1),
+        },
+      }
+    : null;
+
+  return {
+    playerPatch: {
+      ...state.player,
+      ...extraPlayerPatches,
+      xp: remainingXp,
+      level,
+    },
+    rpgPatch,
+    levelsGained,
+  };
+}
+
 const CLASS_TITLES = [
   { minLevel: 1, title: 'Apprentice Scholar', emoji: '📜' },
   { minLevel: 5, title: 'Word Seeker', emoji: '🔍' },
@@ -179,36 +229,45 @@ export default function useGameState() {
         // Immediately write it back to localStorage so next
         // sync reads are fast again
         localStorage.setItem(STORAGE_KEY, json);
-        console.log('[LexRise] Progress restored from IndexedDB backup ✓');
+        if (import.meta.env.DEV) {
+          console.log('[LexRise] Progress restored from IndexedDB backup ✓');
+        }
       } catch {
         // Corrupt backup — ignore, user starts fresh
       }
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Check/reset daily quests
+  // ── Daily rollover + streak reset ────────────────────────
+  // Runs on mount AND every 5 minutes so the rollover fires even if the
+  // user keeps the tab open across midnight.
   useEffect(() => {
-    const today = new Date().toDateString();
-    if (state.dailyQuestDate !== today) {
-      const seed = new Date().getDate() + new Date().getMonth() * 31;
-      setState(s => ({
-        ...s,
-        dailyQuests: generateDailyQuests(seed),
-        dailyQuestDate: today,
-      }));
-    }
-    // Check streak
-    if (state.player.lastPlayedDate) {
-      const last = new Date(state.player.lastPlayedDate);
-      const now = new Date();
-      const daysDiff = Math.floor((now - last) / (1000 * 60 * 60 * 24));
-      if (daysDiff > 1) {
-        setState(s => ({
-          ...s,
-          player: { ...s.player, streak: 0 },
-        }));
-      }
-    }
+    const check = () => {
+      const today = new Date().toDateString();
+      setState(s => {
+        let next = s;
+        if (next.dailyQuestDate !== today) {
+          const seed = new Date().getDate() + new Date().getMonth() * 31;
+          next = {
+            ...next,
+            dailyQuests: generateDailyQuests(seed),
+            dailyQuestDate: today,
+          };
+        }
+        if (next.player.lastPlayedDate) {
+          const last     = new Date(next.player.lastPlayedDate);
+          const now      = new Date();
+          const daysDiff = Math.floor((now - last) / (1000 * 60 * 60 * 24));
+          if (daysDiff > 1 && next.player.streak !== 0) {
+            next = { ...next, player: { ...next.player, streak: 0 } };
+          }
+        }
+        return next;
+      });
+    };
+    check();
+    const interval = setInterval(check, 5 * 60 * 1000); // every 5 minutes
+    return () => clearInterval(interval);
   }, []);
 
   const addXpPopup = useCallback((amount, x = 50, y = 50) => {
@@ -219,22 +278,26 @@ export default function useGameState() {
 
   const awardXP = useCallback((xpGain, skill, questionId) => {
     setState(s => {
-      const newPlayerXp = s.player.xp + xpGain;
-      const xpNeeded = XP_PER_LEVEL(s.player.level);
-      const levelsUp = newPlayerXp >= xpNeeded;
-      const newLevel = levelsUp ? s.player.level + 1 : s.player.level;
-      const remainingXp = levelsUp ? newPlayerXp - xpNeeded : newPlayerXp;
+      const today    = new Date().toDateString();
+      const wasToday = s.player.lastPlayedDate === today;
 
-      if (levelsUp) {
+      // Delegate level-up + RPG scaling to the shared helper so quest rewards
+      // and dungeon bonuses follow identical rules.
+      const { playerPatch, rpgPatch, levelsGained } = applyXPGainToState(s, xpGain, {
+        gems:                   s.player.gems + Math.floor(xpGain / 20),
+        streak:                 wasToday ? s.player.streak : s.player.streak + 1,
+        lastPlayedDate:         today,
+        totalQuestionsAnswered: s.player.totalQuestionsAnswered + 1,
+        totalCorrect:           s.player.totalCorrect + 1,
+        longestStreak:          Math.max(s.player.longestStreak, wasToday ? s.player.streak : s.player.streak + 1),
+      });
+
+      if (levelsGained > 0) {
         setTimeout(() => {
           setLevelUpAnim(true);
           setTimeout(() => setLevelUpAnim(false), 1200);
         }, 100);
       }
-
-      const today = new Date().toDateString();
-      const wasToday = s.player.lastPlayedDate === today;
-      const newStreak = wasToday ? s.player.streak : s.player.streak + 1;
 
       const skillUpdate = skill ? {
         skills: {
@@ -254,21 +317,21 @@ export default function useGameState() {
       return {
         ...s,
         ...skillUpdate,
-        player: {
-          ...s.player,
-          xp: remainingXp,
-          level: newLevel,
-          gems: s.player.gems + Math.floor(xpGain / 20),
-          streak: newStreak,
-          lastPlayedDate: today,
-          totalQuestionsAnswered: s.player.totalQuestionsAnswered + 1,
-          totalCorrect: s.player.totalCorrect + 1,
-          longestStreak: Math.max(s.player.longestStreak, newStreak),
-        },
+        ...(rpgPatch || {}),
+        player: playerPatch,
       };
     });
     addXpPopup(xpGain);
   }, [addXpPopup]);
+
+  /** Award gems outside of the XP pipeline (e.g. streak-milestone chests) */
+  const awardGems = useCallback((amount) => {
+    if (!amount || amount <= 0) return;
+    setState(s => ({
+      ...s,
+      player: { ...s.player, gems: (s.player.gems ?? 0) + amount },
+    }));
+  }, []);
 
   const recordWrong = useCallback((skill) => {
     setState(s => ({
@@ -367,31 +430,42 @@ export default function useGameState() {
 
   const updateQuestProgress = useCallback((type, amount = 1) => {
     setState(s => {
+      let bonusXp   = 0;
+      let bonusGems = 0;
       const updated = s.dailyQuests.map(q => {
         if (q.completed) return q;
-        // q.type === 'any' matches everything; otherwise type must match exactly
         const matches = q.type === 'any' || q.type === type;
         if (!matches) return q;
-        const newProgress = Math.min(q.progress + amount, q.target);
-        const justCompleted = newProgress >= q.target && !q.completed;
+        const newProgress   = Math.min(q.progress + amount, q.target);
+        const justCompleted = newProgress >= q.target;
         if (justCompleted) {
+          bonusXp   += q.xpReward  ?? 0;
+          bonusGems += q.gemReward ?? 0;
           setTimeout(() => setQuestCompleted(q), 100);
         }
-        return { ...q, progress: newProgress, completed: newProgress >= q.target };
+        return { ...q, progress: newProgress, completed: justCompleted };
       });
-      const completedQ = updated.find(q => q.completed && !s.dailyQuests.find(old => old.id === q.id && old.completed));
-      if (completedQ) {
-        return {
-          ...s,
-          dailyQuests: updated,
-          player: {
-            ...s.player,
-            xp: s.player.xp + completedQ.xpReward,
-            gems: s.player.gems + completedQ.gemReward,
-          },
-        };
+      if (bonusXp === 0 && bonusGems === 0) {
+        return { ...s, dailyQuests: updated };
       }
-      return { ...s, dailyQuests: updated };
+      // Route quest XP through the shared level-up helper so a big completion
+      // bonus that crosses the threshold triggers a proper level-up (and the
+      // XP bar never overflows past 100%).
+      const { playerPatch, rpgPatch, levelsGained } = applyXPGainToState(s, bonusXp, {
+        gems: s.player.gems + bonusGems,
+      });
+      if (levelsGained > 0) {
+        setTimeout(() => {
+          setLevelUpAnim(true);
+          setTimeout(() => setLevelUpAnim(false), 1200);
+        }, 100);
+      }
+      return {
+        ...s,
+        dailyQuests: updated,
+        ...(rpgPatch || {}),
+        player: playerPatch,
+      };
     });
   }, []);
 
@@ -661,14 +735,25 @@ export default function useGameState() {
       const farmMult  = getDungeonFarmMultiplier(dungeonId, s.dungeonProgress);
       const finalXP   = Math.floor((bonusXP   ?? 0) * farmMult);
       const finalGems = Math.floor((bonusGems ?? 0) * farmMult);
-      // Level up check after XP award (simple version — awardXP handles levels normally)
+
+      // Route dungeon completion XP through the shared level-up helper so
+      // the bonus can legitimately level the player up (and bypass the old
+      // bug where completing a dungeon at 90 XP left you at 190/100 with no
+      // level-up until the next battle).
+      const { playerPatch, rpgPatch, levelsGained } = applyXPGainToState(s, finalXP, {
+        gems: s.player.gems + finalGems,
+      });
+      if (levelsGained > 0) {
+        setTimeout(() => {
+          setLevelUpAnim(true);
+          setTimeout(() => setLevelUpAnim(false), 1200);
+        }, 100);
+      }
+
       return {
         ...s,
-        player: {
-          ...s.player,
-          xp:   s.player.xp   + finalXP,
-          gems: s.player.gems + finalGems,
-        },
+        ...(rpgPatch || {}),
+        player: playerPatch,
         dungeonProgress: {
           ...s.dungeonProgress,
           [dungeonId]: { ...prev, bossDefeated: true, runCount: prev.runCount + 1 },
@@ -710,11 +795,18 @@ export default function useGameState() {
     exportSave,
     importSave,
     awardXP,
+    awardGems,
     recordWrong,
     updateQuestProgress,
     xpToNextLevel,
     xpPercent,
     getPlayerClass,
+    // Count of dungeons the player has fully cleared (boss defeated).
+    // Used by the Study reward multiplier so deep dungeon progress buffs
+    // study XP — incentivizing study at high levels.
+    dungeonsCleared: Object.values(state.dungeonProgress || {})
+      .filter(d => d?.bossDefeated === true)
+      .length,
     // ── RPG ─────────────────────────────────────────────────
     rpgStats: {
       hp:          state.rpg?.hp ?? 12,

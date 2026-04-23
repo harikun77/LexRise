@@ -116,10 +116,12 @@ export default function StudyHub({ state, onNavigate }) {
       {/* Tip */}
       <div className="mt-6 bg-gray-800/40 border border-gray-700/50 rounded-xl p-4 text-xs text-gray-400 space-y-1">
         <div className="font-semibold text-gray-300 mb-2">💡 How Study Works</div>
-        <div>• Answer questions to earn XP and level up your skills</div>
-        <div>• The SM-2 algorithm schedules due reviews first</div>
-        <div>• Mastered words reappear less often — focus shifts to weak spots</div>
-        <div>• Dungeon enemies pull from the same question bank — the more you study, the easier dungeons get!</div>
+        <div>• <span className="text-white">Daily Focus</span> category earns <span className="text-amber-400 font-semibold">2× XP</span> in both study and dungeons</div>
+        <div>• <span className="text-white">Streak bonuses</span>: 3-correct → 1.25×, 5 → 1.5×, 10 → 2× multiplier</div>
+        <div>• Every <span className="text-cyan-400 font-semibold">5-streak drops 💎5 bonus gems</span>; every 10-streak drops <span className="text-cyan-400 font-semibold">💎15</span></div>
+        <div>• <span className="text-white">Deeper dungeons cleared</span> permanently boost study XP (+5% per dungeon, up to 2×)</div>
+        <div>• <span className="text-indigo-400 font-semibold">Study mastery unlocks higher-tier dungeons</span> — 9th–10th grade dungeons need 8th grade mastery; SAT dungeons need 9th–10th grade mastery</div>
+        <div>• SM-2 spaced repetition schedules due reviews first — mastered words reappear less</div>
       </div>
     </div>
   );

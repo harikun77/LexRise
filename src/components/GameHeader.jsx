@@ -1,6 +1,6 @@
 import { getPlayerClass } from '../hooks/useGameState';
 
-export default function GameHeader({ player, xpPercent, xpToNextLevel, onNavigate, view, state }) {
+export default function GameHeader({ player, xpPercent, xpToNextLevel, onNavigate, view, state, locked = false }) {
   const cls    = getPlayerClass(player.level);
   const hp     = state?.rpg?.hp    ?? 100;
   const maxHp  = state?.rpg?.maxHp ?? 100;
@@ -9,6 +9,11 @@ export default function GameHeader({ player, xpPercent, xpToNextLevel, onNavigat
                 : hpPct > 25 ? 'from-yellow-600 to-yellow-400'
                 :               'from-red-700 to-red-500';
 
+  // During an active dungeon run we disable all header shortcuts — the
+  // logo (goes home), HP pill (goes to inventory), and Shop button — so
+  // the player can't side-step the lock via the header.
+  const nav = (dest) => () => { if (!locked) onNavigate(dest); };
+
   return (
     <header
       className="sticky top-0 z-50 bg-gray-950/95 backdrop-blur border-b border-gray-800"
@@ -16,7 +21,13 @@ export default function GameHeader({ player, xpPercent, xpToNextLevel, onNavigat
     >
       <div className="max-w-2xl mx-auto flex items-center gap-3 px-4 py-3">
         {/* Logo / home */}
-        <button onClick={() => onNavigate('dashboard')} className="flex items-center gap-2 mr-1 flex-shrink-0">
+        <button
+          onClick={nav('dashboard')}
+          disabled={locked}
+          aria-disabled={locked}
+          className={`flex items-center gap-2 mr-1 flex-shrink-0 ${locked ? 'cursor-not-allowed opacity-60' : ''}`}
+          title={locked ? 'Locked during dungeon run' : 'Home'}
+        >
           <span className="text-2xl">🏰</span>
           <span className="font-bold text-lg bg-gradient-to-r from-amber-400 to-yellow-300 bg-clip-text text-transparent tracking-tight">
             LexRise
@@ -43,9 +54,11 @@ export default function GameHeader({ player, xpPercent, xpToNextLevel, onNavigat
         <div className="flex items-center gap-2 ml-1 flex-shrink-0">
           {/* HP mini-bar → inventory */}
           <button
-            onClick={() => onNavigate('inventory')}
-            className="flex items-center gap-1 hover:opacity-80 transition-opacity"
-            title="Inventory"
+            onClick={nav('inventory')}
+            disabled={locked}
+            aria-disabled={locked}
+            className={`flex items-center gap-1 transition-opacity ${locked ? 'cursor-not-allowed opacity-60' : 'hover:opacity-80'}`}
+            title={locked ? 'Inventory locked during dungeon run' : 'Inventory'}
           >
             <span className="text-xs">❤️</span>
             <div className="w-10 h-2 bg-gray-700 rounded-full overflow-hidden">
@@ -68,9 +81,11 @@ export default function GameHeader({ player, xpPercent, xpToNextLevel, onNavigat
 
           {/* Shop */}
           <button
-            onClick={() => onNavigate('shop')}
-            className="text-base hover:opacity-80 transition-opacity"
-            title="Shop"
+            onClick={nav('shop')}
+            disabled={locked}
+            aria-disabled={locked}
+            className={`text-base transition-opacity ${locked ? 'cursor-not-allowed opacity-60' : 'hover:opacity-80'}`}
+            title={locked ? 'Shop locked during dungeon run' : 'Shop'}
           >
             🏪
           </button>
