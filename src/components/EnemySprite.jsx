@@ -56,8 +56,26 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { getMonsterSpriteStyle, getBossSpriteStyle } from '../data/rpg/spriteConfig';
+import { makeTransparentSprite } from '../utils/transparentSprite';
 
 const BASE_URL = import.meta.env.BASE_URL || '/';
+
+// Hook: given an original image URL, returns a processed URL with the
+// background chroma-keyed to transparent. Falls back to the original URL
+// while processing is in flight (so sprites never pop-in blank).
+function useTransparentUrl(url) {
+  const [processed, setProcessed] = useState(url);
+  useEffect(() => {
+    if (!url) return;
+    let cancelled = false;
+    setProcessed(url); // show untouched image immediately
+    makeTransparentSprite(url).then((finalUrl) => {
+      if (!cancelled) setProcessed(finalUrl);
+    });
+    return () => { cancelled = true; };
+  }, [url]);
+  return processed;
+}
 
 // Shape-to-SVG renderers (pixel-art style using simple shapes)
 const SHAPE_RENDERERS = {
@@ -167,6 +185,10 @@ export default function EnemySprite({ enemy, size = 64, className = '', animated
   const [sheetFailed, setSheetFailed] = useState(false);
   const [pngFailed, setPngFailed]     = useState(false);
 
+  // Individual-PNG path: process transparency once the src is known.
+  const rawPngUrl  = `${BASE_URL}sprites/enemies/${enemy.sprite}.png`;
+  const pngUrl     = useTransparentUrl(rawPngUrl);
+
   const animCls = animated ? 'animate-bounce' : '';
 
   // 1 & 2 — Try sprite sheets first (boss sheet → monster sheet)
@@ -188,16 +210,22 @@ export default function EnemySprite({ enemy, size = 64, className = '', animated
     }
   }
 
-  // 3 — Individual PNG fallback
+  // 3 — Individual PNG fallback (transparency-keyed)
   if (!pngFailed) {
     return (
       <img
-        src={`${BASE_URL}sprites/enemies/${enemy.sprite}.png`}
+        src={pngUrl}
         alt={enemy.name}
         width={size}
         height={size}
         className={`${className} ${animCls}`}
-        style={{ imageRendering: 'pixelated' }}
+        style={{
+          imageRendering: 'pixelated',
+          // Subtle drop shadow "grounds" transparent sprites into the scene
+          // without dimming them. Tuned to be visible on dark gray (#111) and
+          // on gradient backgrounds alike.
+          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.55))',
+        }}
         onError={() => setPngFailed(true)}
       />
     );
@@ -213,31 +241,52 @@ export default function EnemySprite({ enemy, size = 64, className = '', animated
 
 /**
  * Renders a sprite from a sheet using CSS background-position.
- * Probes the sheet URL with a hidden Image() object on mount so we
- * can detect a 404 and fall back gracefully — CSS background-image
- * never fires onError on a <div>.
+ *
+ * Two-stage load:
+ *   1. Extract the sheet URL from the `background-image` string.
+ *   2. Probe it with a hidden Image() so we can onError → onFail
+ *      (CSS background-image never fires onError on a <div>).
+ *   3. Run makeTransparentSprite() on it so the rendered sheet has a
+ *      transparent background instead of the baked-in beige rectangle.
+ *      Swap the style's backgroundImage to the processed blob: URL.
  */
 function SheetSprite({ style, name, className, onFail }) {
   const onFailRef = useRef(onFail);
   onFailRef.current = onFail;
 
+  const [resolvedStyle, setResolvedStyle] = useState(style);
+
   useEffect(() => {
-    // Extract the raw URL from the CSS url(...) string
     const raw = style.backgroundImage ?? '';
     const url = raw.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
     if (!url) { onFailRef.current?.(); return; }
 
-    const img = new Image();
-    img.onerror = () => onFailRef.current?.();
-    img.src = url;
-    // On success, nothing to do — the CSS div already shows correctly.
-    // On error, parent's sheetFailed flag causes re-render → falls back.
-  }, [style.backgroundImage]);
+    // Optimistically render the original style while we're still probing
+    // (avoids flicker), then upgrade to the transparent version.
+    setResolvedStyle(style);
+
+    const probe = new Image();
+    probe.onerror = () => onFailRef.current?.();
+    probe.src = url;
+
+    let cancelled = false;
+    makeTransparentSprite(url).then((finalUrl) => {
+      if (cancelled) return;
+      if (finalUrl === url) return; // processing failed; keep original
+      setResolvedStyle({ ...style, backgroundImage: `url("${finalUrl}")` });
+    });
+    return () => { cancelled = true; };
+  }, [style]);
 
   return (
     <div
       className={`inline-block ${className}`}
-      style={style}
+      style={{
+        ...resolvedStyle,
+        // Drop shadow after the chroma-key makes transparent sprites feel
+        // anchored instead of floating. See the PNG path for matching values.
+        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.55))',
+      }}
       title={name}
     />
   );
