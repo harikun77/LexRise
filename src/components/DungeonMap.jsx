@@ -223,8 +223,13 @@ export default function DungeonMap({
       // abandoned branch but understand it's not clickable.
       const isLocked     = visited.has(node.id) && !visited.has(childId) && !available.has(childId);
 
+      // Encode state in the key so React remounts the <line> on transition,
+      // which makes the CSS draw-in animation (.animate-path-reveal) replay
+      // whenever a connector becomes newly available.
+      const stateKey = isNextAvail ? 'nxt' : onPath ? 'path' : isLocked ? 'lock' : 'idle';
+
       lines.push(
-        <line key={`ln-${node.id}-${childId}`}
+        <line key={`ln-${node.id}-${childId}-${stateKey}`}
           x1={x} y1={y} x2={cx} y2={cy}
           stroke={
             isNextAvail ? NODE_BORDER[child.type] ?? '#fff'
@@ -235,70 +240,93 @@ export default function DungeonMap({
           strokeWidth={isNextAvail ? 2.5 : onPath ? 2 : 1.2}
           strokeDasharray={isLocked ? '3,4' : undefined}
           strokeLinecap="round"
+          className={isNextAvail ? 'animate-path-reveal' : ''}
         />
       );
     });
 
-    // ── Node ─────────────────────────────────────────────────
-    // Border colour & width by state. Visited nodes now get a stronger
-    // "completed" look (darker fill, cooler border, slightly lower opacity)
-    // so a just-vanquished node visually flips from pulsing → grayed.
-    const borderColor = isLocked  ? '#1f2937'
-                      : isVisited ? '#475569'
-                      : (isAvail || isCurrent) ? NODE_BORDER[node.type] ?? '#fff'
-                      : NODE_BORDER[node.type];
-    const borderW  = isCurrent ? 3.5 : isAvail ? 3 : isVisited ? 1.5 : 1;
-    const bgColor  = isLocked  ? '#0b1220'
-                   : isVisited ? '#111827'
-                   : NODE_BG[node.type] ?? '#0f172a';
-    const opacity  = isLocked ? 0.35 : isVisited ? 0.55 : 1;
+    // ── Node (coin style) ───────────────────────────────────
+    // Previous style rendered each node as a flat square with a border.
+    // We now render circular "coins" with a radial gradient so they read
+    // as pickups on the map — very Slay-the-Spire / classic RPG feel.
+    //
+    // Available coins get .animate-coin-pulse (amber halo), visited coins
+    // go slate with a ✓, locked ones render dim with 🔒.
+    const radius = Math.round(ns / 2);
+    const gradientId = `coin-grad-${node.type}-${node.id}`;
+
+    // Choose rich → deep gradient stops per node type. These only apply
+    // to non-locked/non-visited coins; visited/locked get plain tones.
+    const gradStopsByType = {
+      monster: ['#f87171', '#7f1d1d'],
+      elite:   ['#c084fc', '#3b0764'],
+      boss:    ['#fcd34d', '#7c2d12'],
+      scroll:  ['#67e8f9', '#164e63'],
+      camp:    ['#86efac', '#14532d'],
+    };
+    const [gradHi, gradLo] = gradStopsByType[node.type] ?? gradStopsByType.monster;
+
+    const rimColor = isLocked  ? '#1f2937'
+                   : isVisited ? '#475569'
+                   : NODE_BORDER[node.type] ?? '#fff';
+    const rimWidth = isCurrent ? 3.5 : isAvail ? 3 : isVisited ? 1.8 : 1.4;
     const iconText = isVisited ? '✓' : isLocked ? '🔒' : NODE_TYPES[node.type]?.icon ?? '❓';
-    const iconSize = isBoss ? Math.round(ns * 0.55) : Math.round(ns * 0.52);
+    const iconSize = isBoss ? Math.round(ns * 0.58) : Math.round(ns * 0.54);
+    const opacity  = isLocked ? 0.35 : isVisited ? 0.55 : 1;
 
     nodeEls.push(
       <g key={node.id} opacity={opacity}
          onClick={clickable ? () => onSelectNode?.(node.id) : undefined}
-         style={{ cursor: clickable ? 'pointer' : 'default' }}>
+         style={{ cursor: clickable ? 'pointer' : 'default' }}
+         className={isAvail ? 'animate-coin-pulse' : ''}>
 
-        {/* Outer glow for current/available */}
+        {/* Per-coin radial gradient — defined inline so coin colouring
+            follows the node type without any shared <defs> gymnastics. */}
+        <defs>
+          <radialGradient id={gradientId} cx="35%" cy="30%" r="70%">
+            <stop offset="0%"   stopColor={gradHi} />
+            <stop offset="70%"  stopColor={gradLo} />
+            <stop offset="100%" stopColor="#000" stopOpacity="0.45" />
+          </radialGradient>
+        </defs>
+
+        {/* Outer glow for current/available — now a circle, not a rect */}
         {(isCurrent || isAvail) && (
-          <rect
-            x={x - half - 8} y={y - half - 8}
-            width={ns + 16} height={ns + 16}
-            rx={10} ry={10}
-            fill="none"
-            stroke={NODE_BORDER[node.type] ?? '#fff'}
-            strokeWidth={isCurrent ? 2 : 1.5}
-            opacity={isCurrent ? 0.4 : 0.25}
-          >
+          <circle cx={x} cy={y} r={radius + 6}
+                  fill="none"
+                  stroke={NODE_BORDER[node.type] ?? '#fff'}
+                  strokeWidth={isCurrent ? 2 : 1.5}
+                  opacity={isCurrent ? 0.4 : 0.25}>
             {isCurrent && (
               <>
                 <animate attributeName="opacity" values="0.5;0.1;0.5" dur="1.8s" repeatCount="indefinite" />
                 <animate attributeName="stroke-width" values="2;4;2" dur="1.8s" repeatCount="indefinite" />
               </>
             )}
-          </rect>
+          </circle>
         )}
 
-        {/* Node background square */}
-        <rect
-          x={x - half} y={y - half}
-          width={ns} height={ns}
-          rx={7} ry={7}
-          fill={bgColor}
-          stroke={borderColor}
-          strokeWidth={borderW}
-        />
+        {/* Drop-shadow pad (flat disc behind the coin, slightly offset down
+            so the coin "sits" in the scene). */}
+        {!isLocked && (
+          <ellipse cx={x} cy={y + radius + 2} rx={radius * 0.85} ry={3}
+                   fill="#000" opacity={0.35} />
+        )}
 
-        {/* Icon background tint (active nodes only) */}
+        {/* The coin */}
+        <circle cx={x} cy={y} r={radius}
+                fill={isLocked ? '#0b1220' : isVisited ? '#111827' : `url(#${gradientId})`}
+                stroke={rimColor}
+                strokeWidth={rimWidth} />
+
+        {/* Highlight arc — cheap pseudo-3D */}
         {!isLocked && !isVisited && (
-          <rect
-            x={x - half + 4} y={y - half + 4}
-            width={ns - 8} height={ns - 8}
-            rx={4} ry={4}
-            fill={NODE_ICON_BG[node.type] ?? '#333'}
-            opacity={0.35}
-          />
+          <path d={`M ${x - radius * 0.55} ${y - radius * 0.2}
+                    Q ${x} ${y - radius * 0.85} ${x + radius * 0.55} ${y - radius * 0.2}`}
+                fill="none"
+                stroke="rgba(255,255,255,0.35)"
+                strokeWidth={1.5}
+                strokeLinecap="round" />
         )}
 
         {/* Emoji icon */}

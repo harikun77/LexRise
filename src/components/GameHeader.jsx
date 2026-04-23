@@ -16,8 +16,12 @@ export default function GameHeader({ player, xpPercent, xpToNextLevel, onNavigat
 
   return (
     <header
-      className="sticky top-0 z-50 bg-gray-950/95 backdrop-blur border-b border-gray-800"
-      style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      className="sticky top-0 z-50 backdrop-blur border-b"
+      style={{
+        paddingTop: 'env(safe-area-inset-top)',
+        background: 'rgba(3, 7, 18, 0.92)',
+        borderColor: 'var(--lx-stroke)',
+      }}
     >
       <div className="max-w-2xl mx-auto flex items-center gap-3 px-4 py-3">
         {/* Logo / home */}
@@ -28,26 +32,23 @@ export default function GameHeader({ player, xpPercent, xpToNextLevel, onNavigat
           className={`flex items-center gap-2 mr-1 flex-shrink-0 ${locked ? 'cursor-not-allowed opacity-60' : ''}`}
           title={locked ? 'Locked during dungeon run' : 'Home'}
         >
-          <span className="text-2xl">🏰</span>
-          <span className="font-bold text-lg bg-gradient-to-r from-amber-400 to-yellow-300 bg-clip-text text-transparent tracking-tight">
+          <span className="text-2xl" aria-hidden="true">🏰</span>
+          <span
+            className="font-display font-bold bg-gradient-to-r from-amber-300 to-yellow-200 bg-clip-text text-transparent"
+            style={{ fontSize: 'var(--t-title)', letterSpacing: '0.04em' }}
+          >
             LexRise
           </span>
         </button>
 
-        {/* XP Bar */}
-        <div className="flex-1 min-w-0">
-          <div className="flex justify-between text-xs text-gray-400 mb-1">
-            <span className="font-semibold text-amber-400">
-              Lvl {player.level} <span className="text-gray-500">{cls.emoji}</span>
-            </span>
-            <span>{player.xp} / {xpToNextLevel} XP</span>
-          </div>
-          <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full xp-bar-fill"
-              style={{ width: `${xpPercent}%` }}
-            />
-          </div>
+        {/* Level + class (XP bar moved below the header as a dedicated strip) */}
+        <div className="flex-1 min-w-0 flex items-baseline gap-2">
+          <span className="t-small font-semibold text-amber-400">
+            Lvl {player.level}
+          </span>
+          <span className="t-micro text-gray-500 truncate" title={cls.title}>
+            {cls.emoji} {cls.title}
+          </span>
         </div>
 
         {/* Right-side stats */}
@@ -60,7 +61,7 @@ export default function GameHeader({ player, xpPercent, xpToNextLevel, onNavigat
             className={`flex items-center gap-1 transition-opacity ${locked ? 'cursor-not-allowed opacity-60' : 'hover:opacity-80'}`}
             title={locked ? 'Inventory locked during dungeon run' : 'Inventory'}
           >
-            <span className="text-xs">❤️</span>
+            <span className="text-xs" aria-hidden="true">❤️</span>
             <div className="w-10 h-2 bg-gray-700 rounded-full overflow-hidden">
               <div className={`h-full bg-gradient-to-r ${hpColor} rounded-full transition-all`}
                    style={{ width: `${hpPct}%` }} />
@@ -68,14 +69,14 @@ export default function GameHeader({ player, xpPercent, xpToNextLevel, onNavigat
           </button>
 
           {/* Gems */}
-          <div className="flex items-center gap-1 text-sm">
-            <span>💎</span>
+          <div className="flex items-center gap-1 t-small">
+            <span aria-hidden="true">💎</span>
             <span className="font-bold text-cyan-400">{player.gems}</span>
           </div>
 
           {/* Streak */}
-          <div className="flex items-center gap-1 text-sm">
-            <span>🔥</span>
+          <div className="flex items-center gap-1 t-small">
+            <span aria-hidden="true">🔥</span>
             <span className="font-bold text-orange-400">{player.streak}</span>
           </div>
 
@@ -90,6 +91,23 @@ export default function GameHeader({ player, xpPercent, xpToNextLevel, onNavigat
             🏪
           </button>
         </div>
+      </div>
+
+      {/* ── Tier 3 #3: full-width XP progress strip
+          Lives under the chrome so it's always visible but never competes
+          with controls. 3px tall, amber, with current/next label overlay. */}
+      <div className="relative h-[3px] bg-gray-900/70" aria-hidden="true">
+        <div
+          className="h-full xp-bar-fill"
+          style={{
+            width: `${xpPercent}%`,
+            background: 'linear-gradient(90deg, var(--lx-accent-lo), var(--lx-accent-hi))',
+            boxShadow: '0 0 8px rgba(251, 191, 36, 0.6)',
+          }}
+        />
+      </div>
+      <div className="sr-only" aria-live="polite">
+        Level {player.level}, {player.xp} of {xpToNextLevel} XP
       </div>
     </header>
   );

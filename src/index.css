@@ -2,12 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════
+   DESIGN TOKENS — single source of truth for the visual system.
+   Components should prefer these CSS vars over raw Tailwind colors
+   when expressing brand identity (accents, surfaces, outlines).
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  /* Surfaces — a stepped dark palette that gives cards depth */
+  --lx-surface-0:   #030712;  /* page background (gray-950) */
+  --lx-surface-1:   #0b1220;  /* raised card base */
+  --lx-surface-2:   #111a2e;  /* interactive card / input */
+  --lx-surface-3:   #1a2744;  /* hover / focus raise */
+  --lx-stroke:      #1e293b;  /* 1px hairlines on cards */
+  --lx-stroke-soft: rgba(255, 255, 255, 0.05);
+  --lx-inset-hi:    rgba(255, 255, 255, 0.04); /* top inset highlight */
+
+  /* Primary accent — amber (LexRise brand) */
+  --lx-accent:       #f59e0b;
+  --lx-accent-hi:    #fbbf24;  /* hover / active highlight */
+  --lx-accent-lo:    #b45309;  /* depressed / low emphasis */
+  --lx-accent-tint:  rgba(245, 158, 11, 0.15); /* backgrounds */
+
+  /* Tier colors (only for tier/category labels, not general accents) */
+  --lx-tier-1:       #22c55e;  /* 8th grade — green */
+  --lx-tier-2:       #3b82f6;  /* 9th–10th — blue */
+  --lx-tier-3:       #a855f7;  /* SAT — purple */
+
+  /* Feedback semantic colors */
+  --lx-ok:           #22c55e;
+  --lx-warn:         #f59e0b;
+  --lx-danger:       #ef4444;
+
+  /* Typography scale — 5 ranks, no in-betweens */
+  --t-display: clamp(24px, 5vw, 32px);
+  --t-title:   20px;
+  --t-body:    14px;
+  --t-small:   12px;
+  --t-micro:   11px;
+
+  /* Motion — tune once, use everywhere */
+  --lx-ease:     cubic-bezier(0.4, 0, 0.2, 1);
+  --lx-ease-out: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --lx-dur-fast: 160ms;
+  --lx-dur:      320ms;
+  --lx-dur-slow: 640ms;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BASE — body, headings, focus rings
+   ═══════════════════════════════════════════════════════════════ */
 @layer base {
   body {
-    @apply bg-gray-950 text-white m-0;
-    font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+    @apply text-white m-0;
+    background: var(--lx-surface-0);
+    font-family: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+    font-size: var(--t-body);
     -webkit-font-smoothing: antialiased;
-    /* Prevent rubber-band scroll from showing white edges on iOS */
     overscroll-behavior: none;
   }
   #root {
@@ -15,88 +65,214 @@
     min-height: 100dvh;
     text-align: left;
   }
+  /* Serif display face for dungeon names, level-up titles, boss chrome.
+     Loaded via <link> in index.html — falls back to system serif. */
+  .font-display {
+    font-family: 'Cinzel', 'Iowan Old Style', Georgia, serif;
+    letter-spacing: 0.01em;
+  }
+
+  /* Visible, consistent focus ring for keyboard navigation. We suppress
+     the default outline and replace it with an amber halo so it stays
+     on-brand and works on every background. */
+  :focus { outline: none; }
+  :focus-visible {
+    outline: 2px solid var(--lx-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   UTILITIES — reusable visual primitives
+   ═══════════════════════════════════════════════════════════════ */
 @layer utilities {
-  .xp-bar-fill {
-    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── Typography ranks ───────────────────────────────────── */
+  .t-display { font-size: var(--t-display); line-height: 1.05; font-weight: 900; letter-spacing: -0.01em; }
+  .t-title   { font-size: var(--t-title);   line-height: 1.15; font-weight: 700; }
+  .t-body    { font-size: var(--t-body);    line-height: 1.5; }
+  .t-small   { font-size: var(--t-small);   line-height: 1.4; }
+  .t-micro   { font-size: var(--t-micro);   line-height: 1.3; letter-spacing: 0.02em; }
+
+  /* ── Surfaces ───────────────────────────────────────────── */
+  /* Use .surface on major cards so every card reads as an object.
+     The inset highlight + outer shadow gives depth cheaply. */
+  .surface {
+    background: var(--lx-surface-1);
+    border: 1px solid var(--lx-stroke);
+    border-radius: 14px;
+    box-shadow:
+      inset 0 1px 0 var(--lx-inset-hi),
+      0 10px 24px -12px rgba(0, 0, 0, 0.6);
   }
-  .card-hover {
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  .surface-2 {
+    background: var(--lx-surface-2);
+    border: 1px solid var(--lx-stroke);
+    border-radius: 12px;
+    box-shadow: inset 0 1px 0 var(--lx-inset-hi);
   }
-  .card-hover:hover {
-    transform: translateY(-2px);
-  }
-  .btn-press:active {
-    transform: scale(0.96);
-  }
-  .glow-gold {
-    box-shadow: 0 0 24px rgba(251,191,36,0.35);
-  }
-  .glow-blue {
-    box-shadow: 0 0 24px rgba(99,102,241,0.4);
-  }
-  .glow-green {
-    box-shadow: 0 0 24px rgba(34,197,94,0.35);
-  }
-  .glow-purple {
-    box-shadow: 0 0 24px rgba(168,85,247,0.35);
-  }
-  .animate-float {
-    animation: float 3s ease-in-out infinite;
-  }
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-6px); }
-  }
-  .animate-xp-pop {
-    animation: xpPop 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-  }
+
+  /* ── XP bar fill transition ─────────────────────────────── */
+  .xp-bar-fill    { transition: width 0.8s var(--lx-ease); }
+  /* Slow "ghost" variant used by the HP bar to show how much damage
+     was just taken — the main fill updates instantly, the ghost trails
+     behind so the lost chunk is visible for ~1 second. */
+  .hp-ghost-fill  { transition: width 1.2s 0.15s var(--lx-ease); }
+
+  /* ── Card interactions ──────────────────────────────────── */
+  .card-hover { transition: transform var(--lx-dur-fast) var(--lx-ease),
+                            box-shadow var(--lx-dur-fast) var(--lx-ease); }
+  .card-hover:hover { transform: translateY(-2px); }
+  .btn-press:active { transform: scale(0.96); }
+
+  /* ── Glow utilities (existing — kept) ───────────────────── */
+  .glow-gold   { box-shadow: 0 0 24px rgba(251,191,36,0.35); }
+  .glow-blue   { box-shadow: 0 0 24px rgba(99,102,241,0.4);  }
+  .glow-green  { box-shadow: 0 0 24px rgba(34,197,94,0.35);  }
+  .glow-purple { box-shadow: 0 0 24px rgba(168,85,247,0.35); }
+
+  /* ── Existing animations ────────────────────────────────── */
+  .animate-float     { animation: float 3s ease-in-out infinite; }
+  @keyframes float   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
+  .animate-xp-pop    { animation: xpPop 1.2s var(--lx-ease-out) forwards; }
   @keyframes xpPop {
-    0% { opacity: 0; transform: translateY(0) scale(0.5); }
-    30% { opacity: 1; transform: translateY(-20px) scale(1.3); }
-    70% { opacity: 1; transform: translateY(-50px) scale(1.1); }
+    0%   { opacity: 0; transform: translateY(0) scale(0.5); }
+    30%  { opacity: 1; transform: translateY(-20px) scale(1.3); }
+    70%  { opacity: 1; transform: translateY(-50px) scale(1.1); }
     100% { opacity: 0; transform: translateY(-80px) scale(1); }
   }
-  .animate-correct {
-    animation: correctPulse 0.5s ease;
-  }
+
+  .animate-correct { animation: correctPulse 0.5s ease; }
   @keyframes correctPulse {
-    0% { box-shadow: 0 0 0 rgba(34,197,94,0); }
-    50% { box-shadow: 0 0 30px rgba(34,197,94,0.6); }
-    100% { box-shadow: 0 0 0 rgba(34,197,94,0); }
+    0%,100% { box-shadow: 0 0 0 rgba(34,197,94,0); }
+    50%     { box-shadow: 0 0 30px rgba(34,197,94,0.6); }
   }
-  .animate-wrong {
-    animation: wrongShake 0.4s ease;
-  }
+
+  .animate-wrong { animation: wrongShake 0.4s ease; }
   @keyframes wrongShake {
-    0%, 100% { transform: translateX(0); }
-    20% { transform: translateX(-8px); }
-    40% { transform: translateX(8px); }
-    60% { transform: translateX(-5px); }
-    80% { transform: translateX(5px); }
+    0%,100% { transform: translateX(0); }
+    20%     { transform: translateX(-8px); }
+    40%     { transform: translateX(8px);  }
+    60%     { transform: translateX(-5px); }
+    80%     { transform: translateX(5px);  }
   }
-  .animate-level-up {
-    animation: levelUp 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  }
+
+  .animate-level-up { animation: levelUp 1s var(--lx-ease-out); }
   @keyframes levelUp {
-    0% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.4); opacity: 0.8; }
-    100% { transform: scale(1); opacity: 1; }
+    0%,100% { transform: scale(1); opacity: 1; }
+    50%     { transform: scale(1.4); opacity: 0.8; }
   }
-  .animate-bounce-in {
-    animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  }
+
+  .animate-bounce-in { animation: bounceIn 0.5s var(--lx-ease-out); }
   @keyframes bounceIn {
-    0% { transform: scale(0.3); opacity: 0; }
-    60% { transform: scale(1.1); }
+    0%   { transform: scale(0.3); opacity: 0; }
+    60%  { transform: scale(1.1); }
     100% { transform: scale(1); opacity: 1; }
   }
-  .animate-fade-in {
-    animation: fadeIn 0.3s ease;
-  }
+
+  .animate-fade-in { animation: fadeIn 0.3s ease; }
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── NEW Tier 2 animations — battle scene ───────────────── */
+
+  /* Gentle breathing idle for live enemies. Tilt ±0.8° + bob 2px. */
+  .animate-enemy-idle { animation: enemyIdle 3.6s ease-in-out infinite; transform-origin: center bottom; }
+  @keyframes enemyIdle {
+    0%,100% { transform: rotate(-0.8deg) translateY(0); }
+    50%     { transform: rotate(0.8deg) translateY(-2px); }
+  }
+
+  /* Hit flash — brief luminance spike + shake. Applied when the
+     player answers correctly. Composable with animate-enemy-idle. */
+  .animate-enemy-hit { animation: enemyHit 0.42s ease-out; }
+  @keyframes enemyHit {
+    0%   { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.55)) brightness(2.2) saturate(0.2);
+           transform: translateX(0); }
+    25%  { transform: translateX(-4px); }
+    55%  { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.55)); transform: translateX(4px); }
+    100% { transform: translateX(0); }
+  }
+
+  /* Floating combat text ("-12", "+15 XP") that emerges from the
+     enemy sprite position and rises while fading out. */
+  .animate-combat-float { animation: combatFloat 1.1s var(--lx-ease-out) forwards; }
+  @keyframes combatFloat {
+    0%   { opacity: 0; transform: translate(-50%, 0) scale(0.6); }
+    20%  { opacity: 1; transform: translate(-50%, -14px) scale(1.15); }
+    80%  { opacity: 1; transform: translate(-50%, -44px) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -58px) scale(0.9); }
+  }
+
+  /* Low-HP emergency vignette — applied when player HP <= 25%. Pulses
+     a red inset shadow around the battle frame. */
+  .battle-vignette-danger {
+    box-shadow: inset 0 0 60px rgba(239, 68, 68, 0.35);
+    animation: dangerPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes dangerPulse {
+    0%,100% { box-shadow: inset 0 0 40px rgba(239,68,68,0.25); }
+    50%     { box-shadow: inset 0 0 70px rgba(239,68,68,0.45); }
+  }
+
+  /* Passive vignette for every battle scene — atmospheric, not alarming. */
+  .battle-vignette {
+    position: relative;
+  }
+  .battle-vignette::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background:
+      radial-gradient(ellipse at 50% 30%, rgba(251, 191, 36, 0.06), transparent 60%),
+      radial-gradient(ellipse at 50% 100%, rgba(0, 0, 0, 0.45), transparent 70%);
+  }
+
+  /* ── NEW Tier 3 animations — map path reveal ────────────── */
+
+  /* Stroke-dashoffset draw-in for newly-available connector lines. */
+  .animate-path-reveal {
+    stroke-dasharray: 140;
+    stroke-dashoffset: 140;
+    animation: pathReveal 0.6s ease-out forwards;
+  }
+  @keyframes pathReveal {
+    to { stroke-dashoffset: 0; }
+  }
+
+  /* Subtle pulsing aura for coin-style interactive map nodes. Kept
+     distinct from .animate-correct so it can run continuously. */
+  .animate-coin-pulse {
+    animation: coinPulse 2.4s ease-in-out infinite;
+  }
+  @keyframes coinPulse {
+    0%,100% { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+    50%     { filter: drop-shadow(0 2px 10px rgba(251,191,36,0.45))
+                      drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ACCESSIBILITY — respect reduced-motion preferences
+   Turns off non-essential animations without disabling transitions
+   that carry information (bar fills). Users who set this preference
+   see a snappier, less distracting app.
+   ═══════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-enemy-idle,
+  .animate-coin-pulse,
+  .battle-vignette-danger {
+    animation: none !important;
   }
 }

@@ -92,9 +92,45 @@ function HpBar({ current, max, label }) {
   return (
     <div>
       {label && <div className="flex justify-between text-xs text-gray-400 mb-1"><span>{label}</span><span>{Math.max(0,current)}/{max}</span></div>}
-      <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
-        <div className={`h-full bg-gradient-to-r ${bar} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
+      <div className="relative h-3 bg-gray-700 rounded-full overflow-hidden">
+        {/* Ghost fill — lags behind the real fill so the chunk of HP you
+            just lost stays visible for ~1s as a translucent red block. */}
+        <div
+          className="absolute inset-y-0 left-0 hp-ghost-fill bg-red-900/60"
+          style={{ width: `${pct}%` }}
+        />
+        {/* Real fill — instant-ish, reflects actual HP */}
+        <div
+          className={`relative h-full bg-gradient-to-r ${bar} rounded-full transition-all duration-300`}
+          style={{ width: `${pct}%` }}
+        />
       </div>
+    </div>
+  );
+}
+
+/**
+ * FloatingDamage — transient combat number that rises from a point on
+ * the enemy sprite. Used for both damage dealt (red) and XP gained
+ * (amber). The parent key-swaps these via a Math.random() id so each
+ * number replays the keyframes even when the value is identical.
+ */
+function FloatingDamage({ value, kind = 'damage', x = '50%' }) {
+  const color = kind === 'damage' ? 'text-red-300'
+              : kind === 'xp'     ? 'text-amber-300'
+              :                     'text-white';
+  const sign  = kind === 'damage' ? '-' : '+';
+  return (
+    <div
+      className={`absolute pointer-events-none animate-combat-float font-black ${color}`}
+      style={{
+        left: x,
+        top: '20%',
+        fontSize: 'var(--t-title)',
+        textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.6)',
+      }}
+    >
+      {sign}{value}{kind === 'xp' ? ' XP' : ''}
     </div>
   );
 }
@@ -541,6 +577,21 @@ export default function DungeonExplore({
   const [nodeGems, setNodeGems]     = useState(0);
   const [weakCategory, setWeakCategory] = useState(null); // boss uses player's weakest category
 
+  // ── Tier 2 combat feel ──────────────────────────────────────
+  // Hit flash: when the player lands a correct answer, flip this to the
+  // enemy's current hitId briefly so the sprite runs animate-enemy-hit.
+  const [hitId, setHitId]               = useState(0);
+  // Floating damage / XP numbers over the enemy sprite. Each entry has a
+  // unique id so React can replay the keyframes when values repeat.
+  const [floaters, setFloaters]         = useState([]);
+
+  // Helper: spawn a floating number; auto-clears after the animation ends.
+  const spawnFloater = useCallback((value, kind = 'damage') => {
+    const id = Math.random().toString(36).slice(2);
+    setFloaters(f => [...f, { id, value, kind, x: `${42 + Math.random() * 16}%` }]);
+    setTimeout(() => setFloaters(f => f.filter(x => x.id !== id)), 1200);
+  }, []);
+
   // ── Educational mechanics refs ──────────────────────────────
   // Wrong-answer revenge queue — questions come back after 3 correct
   const revengeQueueRef        = useRef([]);
@@ -675,9 +726,15 @@ export default function DungeonExplore({
       const dmg    = Math.max(5, totalAtk);
       const newEHp = Math.max(0, enemyHp - dmg);
       setEnemyHp(newEHp);
+      // Tier 2 feedback: flash + shake the sprite, and float a damage
+      // number plus an XP badge off the enemy position.
+      setHitId(id => id + 1);
+      spawnFloater(dmg, 'damage');
       setCombatLog(l => [`⚔️ Hit! ${enemy?.name} takes ${dmg} dmg.`, ...l.slice(0,2)]);
       const baseXP  = q.xp || 15;
       const xpGained = Math.round(baseXP * dailyMult);
+      // Delay the XP floater slightly so numbers stagger, not overlap.
+      setTimeout(() => spawnFloater(xpGained, 'xp'), 160);
       setNodeXP(x => x + xpGained);
       setNodeGems(g => g + Math.floor(xpGained / 10));
       const skill = q.qtype === 'vocab' ? 'vocabulary' : q.qtype === 'reading' ? 'reading' : 'grammar';
@@ -702,7 +759,7 @@ export default function DungeonExplore({
       recordWrong(q.qtype === 'vocab' ? 'vocabulary' : 'grammar');
       if (curHp - dmg <= 0) { setTimeout(() => setPhase('game_over'), 500); return; }
     }
-  }, [selected, questions, qIdx, enemyHp, totalAtk, totalDef, curHp, enemy, awardXP, updateQuestProgress, takeDamage, recordWrong]);
+  }, [selected, questions, qIdx, enemyHp, totalAtk, totalDef, curHp, enemy, awardXP, updateQuestProgress, takeDamage, recordWrong, spawnFloater]);
 
   const nextQuestion = useCallback(() => {
     const nextIdx = qIdx + 1;
@@ -999,24 +1056,73 @@ export default function DungeonExplore({
     if (!q || !enemy) return null;
     const eHpPct = Math.max(0, (enemyHp / enemyMaxHp) * 100);
     const nodeType = pendingNodeId ? activeMap?.nodes[pendingNodeId]?.type : 'monster';
+    const lowHp = maxHp > 0 && (curHp / maxHp) <= 0.25;
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-4 animate-fade-in">
-        {/* Enemy + HP */}
-        <div className="flex items-center gap-3 mb-3">
-          <EnemySprite enemy={enemy} size={44} />
-          <div className="flex-1">
-            <div className="flex justify-between text-xs mb-1">
-              <span className={`font-bold ${isBossNode ? 'text-yellow-400' : nodeType === 'elite' ? 'text-purple-400' : 'text-white'}`}>{enemy.name}</span>
-              <span className="text-gray-400">{Math.max(0, enemyHp)}/{enemyMaxHp}</span>
+        {/* ── Battle scene: enemy stage ──────────────────────
+            A dedicated relative container so floating damage numbers
+            can position themselves against the sprite. The passive
+            vignette adds atmosphere; low HP triggers a danger pulse. */}
+        <div
+          className={`relative overflow-hidden rounded-2xl surface battle-vignette mb-3 ${lowHp ? 'battle-vignette-danger' : ''}`}
+          style={{
+            padding: '14px 14px 12px',
+            background: isBossNode
+              ? 'radial-gradient(ellipse at 50% 20%, rgba(234,179,8,0.18), transparent 70%), linear-gradient(180deg, #14121a, #0b1220)'
+              : nodeType === 'elite'
+                ? 'radial-gradient(ellipse at 50% 20%, rgba(168,85,247,0.16), transparent 70%), linear-gradient(180deg, #0f0b1e, #0b1220)'
+                : 'radial-gradient(ellipse at 50% 20%, rgba(99,102,241,0.14), transparent 70%), linear-gradient(180deg, #0e1424, #0b1220)',
+          }}
+        >
+          <div className="flex items-center gap-3">
+            {/* Sprite stage — idle breathing by default, replays hit flash
+                whenever hitId changes. `key` resets the hit animation. */}
+            <div className="relative flex-shrink-0" style={{ width: 64, height: 64 }}>
+              <div
+                key={hitId}
+                className={`${hitId > 0 ? 'animate-enemy-hit' : ''}`}
+                style={{ position: 'absolute', inset: 0 }}
+              >
+                <div className="animate-enemy-idle" style={{ width: 64, height: 64 }}>
+                  <EnemySprite enemy={enemy} size={64} />
+                </div>
+              </div>
+              {/* Floating combat numbers */}
+              {floaters.map(f => (
+                <FloatingDamage key={f.id} value={f.value} kind={f.kind} x={f.x} />
+              ))}
             </div>
-            <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full transition-all duration-500 ${isBossNode ? 'bg-gradient-to-r from-yellow-700 to-orange-500' : nodeType === 'elite' ? 'bg-gradient-to-r from-purple-700 to-violet-500' : 'bg-gradient-to-r from-rose-700 to-red-500'}`} style={{ width: `${eHpPct}%` }} />
+
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-baseline mb-1">
+                <span className={`font-display font-bold t-title ${isBossNode ? 'text-yellow-300' : nodeType === 'elite' ? 'text-purple-300' : 'text-white'}`}>
+                  {enemy.name}
+                </span>
+                <span className="t-micro text-gray-400 font-mono">{Math.max(0, enemyHp)}/{enemyMaxHp}</span>
+              </div>
+              {/* Enemy HP bar with ghost-lag so taken chunks linger */}
+              <div className="relative h-3 bg-gray-800 rounded-full overflow-hidden border border-gray-900">
+                <div
+                  className="absolute inset-y-0 left-0 hp-ghost-fill bg-red-900/60"
+                  style={{ width: `${eHpPct}%` }}
+                />
+                <div
+                  className={`relative h-full rounded-full transition-all duration-300 ${
+                    isBossNode ? 'bg-gradient-to-r from-yellow-700 to-orange-500'
+                    : nodeType === 'elite' ? 'bg-gradient-to-r from-purple-700 to-violet-500'
+                    : 'bg-gradient-to-r from-rose-700 to-red-500'
+                  }`}
+                  style={{ width: `${eHpPct}%` }}
+                />
+              </div>
+              {/* Your HP inline under the enemy HP to keep the stage compact */}
+              <div className="mt-2">
+                <HpBar current={curHp} max={maxHp} label="❤️ Your HP" />
+              </div>
             </div>
           </div>
         </div>
-
-        <HpBar current={curHp} max={maxHp} label="❤️ Your HP" />
 
         {/* Question progress */}
         <div className="flex gap-1 my-3">
