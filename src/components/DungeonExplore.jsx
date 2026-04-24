@@ -28,6 +28,7 @@ import { ALL_PASSAGES } from '../data/reading/index';
 import { POTIONS_MAP } from '../data/rpg/items';
 import { generateMap, getAvailableNodes, getNodeDifficulty, generateRunSeed, getNumPaths, getNumRows, NODE_TYPES } from '../utils/mapGen';
 import { shuffleInPlace, shuffled, shuffleOptionsPreservingAnswer } from '../utils/shuffle';
+import { computeDamage } from '../hooks/useGameState';
 
 // ── Daily focus: cycles vocab → grammar → reading each day ────
 const DAILY_FOCUS = (() => {
@@ -753,7 +754,7 @@ export default function DungeonExplore({
         // Track weak category for boss fights
         wrongCategoriesRef.current[q.qtype] = (wrongCategoriesRef.current[q.qtype] || 0) + 1;
       }
-      const dmg = Math.max(1, (enemy?.attack ?? 5) - totalDef);
+      const dmg = computeDamage(enemy?.attack ?? 5, totalDef);
       takeDamage(dmg);
       setCombatLog(l => [`💥 ${enemy?.name} hits you for ${dmg}!`, ...l.slice(0,2)]);
       recordWrong(q.qtype === 'vocab' ? 'vocabulary' : 'grammar');
@@ -1016,7 +1017,7 @@ export default function DungeonExplore({
 
         <div className="bg-gray-800/40 border border-gray-700 rounded-xl p-3 mb-4 text-xs text-gray-400 space-y-1">
           <div>⚔️ Your attack: <span className="text-green-400 font-bold">{Math.max(5, totalAtk)} dmg</span> per correct answer</div>
-          <div>💥 Enemy attack: <span className="text-red-400 font-bold">{Math.max(1, (enemy.attack ?? 5) - totalDef)} dmg</span> if wrong</div>
+          <div>💥 Enemy attack: <span className="text-red-400 font-bold">{computeDamage(enemy.attack ?? 5, totalDef)} dmg</span> if wrong</div>
           <div>📚 ~<span className="text-amber-400 font-bold">{Math.ceil(enemy.hp / Math.max(5, totalAtk))}</span> correct answers to win</div>
         </div>
 

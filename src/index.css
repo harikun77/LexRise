@@ -236,14 +236,34 @@
 
   /* ── NEW Tier 3 animations — map path reveal ────────────── */
 
-  /* Stroke-dashoffset draw-in for newly-available connector lines. */
-  .animate-path-reveal {
-    stroke-dasharray: 140;
-    stroke-dashoffset: 140;
-    animation: pathReveal 0.6s ease-out forwards;
+  /* Arrival burst — an expanding ring that fades out. Fires when a node
+     transitions into the "available" state (remounted via a keyed <g>
+     that carries the node's state in its key). Replaces the old
+     stroke-dashoffset line animation which left a fixed-length gap
+     after completing on connectors longer than the 140-unit dash.
+     This effect targets the node directly, so it's length-agnostic. */
+  .animate-node-arrival {
+    animation: nodeArrival 0.9s var(--lx-ease-out) forwards;
+    transform-origin: center center;
+    transform-box: fill-box;
   }
-  @keyframes pathReveal {
-    to { stroke-dashoffset: 0; }
+  @keyframes nodeArrival {
+    0%   { transform: scale(0.4); opacity: 0; }
+    45%  { transform: scale(1.18); opacity: 1; }
+    70%  { transform: scale(0.95); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Ring burst that emanates from a newly-available node. Used as an
+     overlay SVG <circle> whose radius and opacity animate outward. */
+  .animate-ring-burst {
+    animation: ringBurst 0.9s ease-out forwards;
+    transform-origin: center center;
+    transform-box: fill-box;
+  }
+  @keyframes ringBurst {
+    0%   { transform: scale(0.6); opacity: 0.9; }
+    100% { transform: scale(2.2); opacity: 0;   }
   }
 
   /* Subtle pulsing aura for coin-style interactive map nodes. Kept
@@ -272,6 +292,8 @@
   }
   .animate-enemy-idle,
   .animate-coin-pulse,
+  .animate-node-arrival,
+  .animate-ring-burst,
   .battle-vignette-danger {
     animation: none !important;
   }

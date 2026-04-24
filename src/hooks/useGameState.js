@@ -16,6 +16,54 @@ const STORAGE_KEY = 'lexrise_save';
 const XP_PER_LEVEL = (level) => Math.floor(100 * Math.pow(1.3, level - 1));
 
 // ─────────────────────────────────────────────────────────────
+// Combat math helpers — shared between useGameState.takeDamage,
+// applyXPGainToState (RPG stat scaling on level-up), and the
+// DungeonExplore display calcs so the "N dmg if wrong" hint always
+// matches the actual HP deduction.
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Compute the player's base defense from level.
+ *
+ * History:
+ *   Original  : (level - 1) * 1          ← too steep — level 5 gave 4 def,
+ *                                          which ate tier-1 enemies' 4-6
+ *                                          attack down to the 1-dmg floor.
+ *                                          Zero combat tension.
+ *   New       : Math.floor((level - 1)/2) ← gains 1 def every 2 levels, so
+ *                                          level 5 gives 2 def, level 10
+ *                                          gives 4, level 20 gives 9.
+ *                                          Enemies stay threatening early.
+ */
+export function computeBaseDefense(level) {
+  return Math.floor((level - 1) / 2);
+}
+
+/**
+ * Compute the actual damage an enemy deals to the player.
+ *
+ * Two bugs previously lived here:
+ *  1. takeDamage added the armor's `atkBonus` (which is an ATTACK buff)
+ *     to its effective defense via a mis-named "defensive bonus" line.
+ *     That meant armor like Berserker Plate (+10 ATK) also silently
+ *     granted +10 DEF, so the player was absorbing almost everything.
+ *  2. With the old scaling, `max(1, attack - defense)` floored at 1
+ *     constantly for tier-1 fights, so every wrong answer cost a single HP.
+ *
+ * The new formula guarantees a meaningful hit even with great gear by
+ * clamping the minimum to a fraction of the enemy's raw attack:
+ *   damage = max(ceil(attack * MIN_FRACTION), attack - defense)
+ *
+ * MIN_FRACTION = 0.30 keeps bosses scary (Krevatar atk=22 always lands
+ * at least 7 dmg) while still rewarding armor investment.
+ */
+export const MIN_DAMAGE_FRACTION = 0.30;
+export function computeDamage(enemyAttack, defense) {
+  const floorDmg = Math.ceil((enemyAttack ?? 5) * MIN_DAMAGE_FRACTION);
+  return Math.max(floorDmg, (enemyAttack ?? 5) - (defense ?? 0));
+}
+
+// ─────────────────────────────────────────────────────────────
 // applyXPGainToState — shared XP → level-up helper
 //
 // Every path that awards XP to the player (battles, scrolls, daily quests,
@@ -48,7 +96,7 @@ function applyXPGainToState(state, xpGain, extraPlayerPatches = {}) {
           maxHp:       12 + (level - 1) * 8,
           hp:          Math.min((state.rpg?.hp ?? 12) + 5 * levelsGained, 12 + (level - 1) * 8),
           baseAttack:  3  + (level - 1) * 2,
-          baseDefense: Math.floor((level - 1) * 1),
+          baseDefense: computeBaseDefense(level),
         },
       }
     : null;
@@ -149,18 +197,28 @@ const DEFAULT_STATE = {
 
 // ── Deep merge helper ────────────────────────────────────
 function mergeWithDefaults(saved) {
+  const mergedPlayer = { ...DEFAULT_STATE.player, ...(saved.player || {}) };
+  // Re-derive baseDefense from the player's level on every load. This lets
+  // us silently migrate saves that accumulated the old too-aggressive
+  // scaling (1 def per level) to the current slower formula — otherwise
+  // a level-5 player would keep baseDefense=4 forever, since the hook only
+  // re-derives these on level-up.
+  const migratedBaseDefense = computeBaseDefense(mergedPlayer.level ?? 1);
+
   return {
     ...DEFAULT_STATE,
     ...saved,
-    player: { ...DEFAULT_STATE.player, ...(saved.player || {}) },
+    player: mergedPlayer,
     skills: {
       vocabulary: { ...DEFAULT_STATE.skills.vocabulary, ...(saved.skills?.vocabulary || {}) },
       grammar:    { ...DEFAULT_STATE.skills.grammar,    ...(saved.skills?.grammar    || {}) },
       reading:    { ...DEFAULT_STATE.skills.reading,    ...(saved.skills?.reading    || {}) },
     },
     vocabSM2: { ...(saved.vocabSM2 || {}) },
-    // Deep merge RPG stats — existing save values take priority
+    // Deep merge RPG stats — existing save values take priority EXCEPT
+    // baseDefense, which is recomputed from level to apply the balance fix.
     rpg: { ...DEFAULT_STATE.rpg, ...(saved.rpg || {}),
+      baseDefense: migratedBaseDefense,
       floorEncounterCounts: { ...(saved.rpg?.floorEncounterCounts || {}) },
     },
     // Deep merge inventory
@@ -498,9 +556,13 @@ export default function useGameState() {
   const takeDamage = useCallback((rawDamage) => {
     setState(s => {
       const armor = s.inventory?.armorId || STARTER_ARMOR?.id;
-      const defense = getTotalDefense(s.rpg?.baseDefense ?? 0, armor)
-                    + getAttackBonusFromArmor(armor); // defensive bonus
-      const damage = Math.max(1, rawDamage - defense);
+      // Defense is ONLY the base + armor.def. Previously this accidentally
+      // added armor.atkBonus as a "defensive bonus" — atkBonus is an
+      // attack buff (already added to totalAttack on the hook return) and
+      // had no business inflating defense. Fixed.
+      const defense = getTotalDefense(s.rpg?.baseDefense ?? 0, armor);
+      // Min-damage floor keeps enemies scary even with great gear.
+      const damage = computeDamage(rawDamage, defense);
       const currentHp = s.rpg?.hp ?? 12;
       let newHp = currentHp - damage;
 
@@ -681,7 +743,7 @@ export default function useGameState() {
     setState(s => {
       const baseMaxHp    = 12 + (newLevel - 1) * 8;
       const baseAttack   = 3  + (newLevel - 1) * 2;
-      const baseDefense  = Math.floor((newLevel - 1) * 1);
+      const baseDefense  = computeBaseDefense(newLevel);
       return {
         ...s,
         rpg: {

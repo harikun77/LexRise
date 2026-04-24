@@ -219,28 +219,27 @@ export default function DungeonMap({
       const isNextAvail  = available.has(childId) && visited.has(node.id);
       // A line is to a locked branch when the parent is visited but the child
       // is neither visited nor available — i.e., the player committed to the
-      // other side of a fork. Render it very dim so players can see the
+      // other side of a fork. Render it dim + dashed so players can see the
       // abandoned branch but understand it's not clickable.
-      const isLocked     = visited.has(node.id) && !visited.has(childId) && !available.has(childId);
+      const isLockedLine = visited.has(node.id) && !visited.has(childId) && !available.has(childId);
 
-      // Encode state in the key so React remounts the <line> on transition,
-      // which makes the CSS draw-in animation (.animate-path-reveal) replay
-      // whenever a connector becomes newly available.
-      const stateKey = isNextAvail ? 'nxt' : onPath ? 'path' : isLocked ? 'lock' : 'idle';
-
+      // Stable key per connector. The line's appearance (color, width)
+      // changes via stroke props, not via remount — no animation on the
+      // line itself, so no dasharray length mismatch. Progression is now
+      // signalled by the destination node's arrival burst instead.
       lines.push(
-        <line key={`ln-${node.id}-${childId}-${stateKey}`}
+        <line key={`ln-${node.id}-${childId}`}
           x1={x} y1={y} x2={cx} y2={cy}
           stroke={
             isNextAvail ? NODE_BORDER[child.type] ?? '#fff'
             : onPath    ? 'rgba(255,255,255,0.5)'
-            : isLocked  ? 'rgba(100,116,139,0.18)'
+            : isLockedLine ? 'rgba(100,116,139,0.18)'
             :              'rgba(255,255,255,0.18)'
           }
           strokeWidth={isNextAvail ? 2.5 : onPath ? 2 : 1.2}
-          strokeDasharray={isLocked ? '3,4' : undefined}
+          strokeDasharray={isLockedLine ? '3,4' : undefined}
           strokeLinecap="round"
-          className={isNextAvail ? 'animate-path-reveal' : ''}
+          style={{ transition: 'stroke 0.4s ease, stroke-width 0.3s ease' }}
         />
       );
     });
@@ -275,10 +274,18 @@ export default function DungeonMap({
     const opacity  = isLocked ? 0.35 : isVisited ? 0.55 : 1;
 
     nodeEls.push(
-      <g key={node.id} opacity={opacity}
-         onClick={clickable ? () => onSelectNode?.(node.id) : undefined}
-         style={{ cursor: clickable ? 'pointer' : 'default' }}
-         className={isAvail ? 'animate-coin-pulse' : ''}>
+      <g
+        // Outer group is state-keyed so it remounts on transition, which
+        // makes the one-shot .animate-node-arrival run exactly once per
+        // state change. The ambient coin pulse lives on a nested <g> so
+        // the two animations don't fight for the CSS `animation` shorthand.
+        key={`${node.id}-${st}`}
+        opacity={opacity}
+        onClick={clickable ? () => onSelectNode?.(node.id) : undefined}
+        style={{ cursor: clickable ? 'pointer' : 'default' }}
+        className={isAvail ? 'animate-node-arrival' : ''}
+      >
+       <g className={isAvail ? 'animate-coin-pulse' : ''}>
 
         {/* Per-coin radial gradient — defined inline so coin colouring
             follows the node type without any shared <defs> gymnastics. */}
@@ -289,6 +296,21 @@ export default function DungeonMap({
             <stop offset="100%" stopColor="#000" stopOpacity="0.45" />
           </radialGradient>
         </defs>
+
+        {/* One-shot arrival burst: an expanding ring that fades out.
+            Rendered only on available nodes; because the parent <g> is
+            state-keyed, this element mounts fresh on each transition
+            and its CSS keyframes play to completion. */}
+        {isAvail && (
+          <circle
+            cx={x} cy={y} r={radius + 2}
+            fill="none"
+            stroke={NODE_BORDER[node.type] ?? '#fbbf24'}
+            strokeWidth={2}
+            className="animate-ring-burst"
+            style={{ pointerEvents: 'none' }}
+          />
+        )}
 
         {/* Outer glow for current/available — now a circle, not a rect */}
         {(isCurrent || isAvail) && (
@@ -370,6 +392,7 @@ export default function DungeonMap({
             ▲ BOSS ▲
           </text>
         )}
+       </g>
       </g>
     );
   });
